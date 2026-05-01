@@ -67,6 +67,15 @@ def ensure_base(repo: Path, project: str) -> None:
             path.write_text(title, encoding="utf-8")
 
 
+def ensure_git_identity(repo: Path) -> None:
+    name = run(["git", "config", "--get", "user.name"], cwd=repo, check=False)
+    email = run(["git", "config", "--get", "user.email"], cwd=repo, check=False)
+    if not name:
+        run(["git", "config", "user.name", "AI Worklog Bot"], cwd=repo)
+    if not email:
+        run(["git", "config", "user.email", "ai-worklog@example.invalid"], cwd=repo)
+
+
 def build_log_entry(args: argparse.Namespace) -> str:
     files = ", ".join(args.file) if args.file else "none"
     commit = args.artifact_commit or "pending"
@@ -254,6 +263,7 @@ def main() -> int:
     with tempfile.TemporaryDirectory(prefix="ai-worklog-publish-") as tmp:
         repo = Path(tmp) / "repo"
         sparse_clone_or_init(args.remote, args.branch, repo, args.project)
+        ensure_git_identity(repo)
         ensure_base(repo, args.project)
         month = args.date[:7]
         log_path = repo / "ai-log" / args.project / f"{month}.md"

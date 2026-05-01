@@ -13,7 +13,7 @@ jobs:
         with:
           python-version: "3.12"
       - name: Compile scripts
-        run: python -m py_compile scripts/*.py
+        run: python -m py_compile scripts/*.py scripts/ai_worklog/*.py
       - name: Validate SKILL frontmatter
         run: |
           python - <<'PY'
