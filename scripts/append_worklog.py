@@ -76,6 +76,7 @@ def build_entry(args: argparse.Namespace, repo: Path) -> str:
         "Artifacts:",
         f"- commit: {commit}",
         f"- files: {', '.join(files) if files else 'none'}",
+        f"- privacy: {args.privacy}",
     ]
     if args.decision:
         lines.extend(["", "Decision:", bullet_lines(args.decision)])
@@ -99,6 +100,12 @@ def main() -> int:
     parser.add_argument("--next", action="append", default=[], help="Follow-up item")
     parser.add_argument("--file", action="append", default=[], help="Artifact file path")
     parser.add_argument("--commit", default="", help="Commit sha, or pending")
+    parser.add_argument(
+        "--privacy",
+        choices=["public", "project", "private"],
+        default="project",
+        help="Visibility label for this entry",
+    )
     parser.add_argument("--date", default=today, help="Entry date as YYYY-MM-DD")
     parser.add_argument("--log-dir", default="ai-log", help="Worklog directory")
     parser.add_argument("--dry-run", action="store_true", help="Print entry without writing")

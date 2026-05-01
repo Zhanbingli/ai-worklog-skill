@@ -25,6 +25,7 @@ Changed:
 Artifacts:
 - commit: short-sha or pending
 - files: path, path
+- privacy: public, project, or private
 
 Decision:
 - Optional. Why this approach won.
@@ -112,7 +113,27 @@ Failure or question being audited:
 Use `scripts/append_worklog.py` for standard personal changelog entries:
 
 ```bash
-python scripts/append_worklog.py --repo . --title "Task title" --goal "One-sentence goal" --changed "Concrete result"
+python scripts/append_worklog.py --repo . --title "Task title" --goal "One-sentence goal" --changed "Concrete result" --privacy project
 ```
 
 The script creates `ai-log/YYYY-MM.md` when missing, marks the commit as `pending` while the repo is dirty, and fills files from the working tree or the last commit.
+
+## Project Initialization
+
+Use `scripts/init_project.py` once per repository:
+
+```bash
+python scripts/init_project.py --repo .
+```
+
+It creates `ai-log/`, `ai-memory/decisions.md`, `ai-memory/pitfalls.md`, `ai-memory/prompts.md`, `.ai-raw/`, and a `.gitignore` entry for `.ai-raw/`.
+
+## Weekly Summary Context
+
+Use `scripts/weekly_context.py` before asking Codex to write a weekly review:
+
+```bash
+python scripts/weekly_context.py --repo . --since 2026-04-24
+```
+
+Codex should turn the output into a short private review or a sanitized public note depending on the requested audience.

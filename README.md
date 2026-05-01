@@ -20,7 +20,13 @@ git pull
 
 ## Use
 
-Ask Codex:
+Initialize a project once:
+
+```bash
+python ~/.codex/skills/ai-worklog/scripts/init_project.py --repo .
+```
+
+After an AI-assisted task, ask Codex:
 
 ```text
 Use $ai-worklog to summarize this session into a concise changelog and project memory update.
@@ -31,7 +37,19 @@ The skill defaults to short, searchable records and keeps raw prompt transcripts
 To append a standard changelog entry:
 
 ```bash
-python ~/.codex/skills/ai-worklog/scripts/append_worklog.py --repo . --title "Task title" --goal "One-sentence goal" --changed "Concrete result"
+python ~/.codex/skills/ai-worklog/scripts/append_worklog.py --repo . --title "Task title" --goal "One-sentence goal" --changed "Concrete result" --privacy project
+```
+
+For a weekly review:
+
+```bash
+python ~/.codex/skills/ai-worklog/scripts/weekly_context.py --repo . --since 2026-04-24
+```
+
+Then ask Codex:
+
+```text
+Use $ai-worklog to turn this weekly context into a private weekly review and a sanitized build-in-public draft.
 ```
 
 Privacy defaults:
@@ -44,6 +62,8 @@ Privacy defaults:
 ## Files
 
 - `SKILL.md`: workflow and usage rules.
+- `scripts/init_project.py`: initialize a project for worklogs and private raw logs.
 - `scripts/collect_git_context.py`: collect git status, diff stats, branch, and changed files.
 - `scripts/append_worklog.py`: create and append `ai-log/YYYY-MM.md` entries.
+- `scripts/weekly_context.py`: collect context for weekly reviews.
 - `references/log-format.md`: templates for changelog, project memory, public notes, and audit records.

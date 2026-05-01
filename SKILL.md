@@ -22,27 +22,35 @@ Do not justify this workflow using broad claims about "literate vs oral" culture
 
 ## Workflow
 
-1. Identify the audience: self, public readers, future agent, or audit/debug.
-2. Inspect the current repo state before writing records:
+1. If the project has no worklog structure, initialize it:
    ```bash
-   python skills/ai-worklog/scripts/collect_git_context.py --repo .
+   python ~/.codex/skills/ai-worklog/scripts/init_project.py --repo .
    ```
-3. Write or update the smallest useful record:
+2. Identify the audience: self, public readers, future agent, or audit/debug.
+3. Inspect the current repo state before writing records:
+   ```bash
+   python ~/.codex/skills/ai-worklog/scripts/collect_git_context.py --repo .
+   ```
+4. Write or update the smallest useful record:
    - Use `ai-log/YYYY-MM.md` for completed task summaries.
    - Use `ai-memory/decisions.md` for durable decisions.
    - Use `ai-memory/pitfalls.md` for failure modes and fixes.
    - Use `ai-memory/prompts.md` only for reusable prompt patterns, not private transcripts.
-4. Link records to commits when available. If no commit exists yet, reference changed files and say `commit: pending`.
-5. Keep raw conversation and full prompt transcripts out of git unless the user explicitly asks for audit logging. If raw logs are needed, prefer `.ai-raw/` and add it to `.gitignore`.
-6. After editing records, show the user what was added and mention any missing commit/test context.
+5. Link records to commits when available. If no commit exists yet, reference changed files and say `commit: pending`.
+6. Keep raw conversation and full prompt transcripts out of git unless the user explicitly asks for audit logging. If raw logs are needed, prefer `.ai-raw/` and add it to `.gitignore`.
+7. After editing records, show the user what was added and mention any missing commit/test context.
 
 For a standard personal changelog entry, use the append script instead of hand-editing:
 
 ```bash
-python skills/ai-worklog/scripts/append_worklog.py --repo . --title "Short task title" --goal "One-sentence goal" --changed "Concrete result"
+python ~/.codex/skills/ai-worklog/scripts/append_worklog.py --repo . --title "Short task title" --goal "One-sentence goal" --changed "Concrete result"
 ```
 
-Adjust the script path to the installed skill location when needed, such as `~/.codex/skills/ai-worklog/scripts/append_worklog.py`.
+For a weekly review context, use:
+
+```bash
+python ~/.codex/skills/ai-worklog/scripts/weekly_context.py --repo . --since YYYY-MM-DD
+```
 
 ## Writing Rules
 
@@ -77,7 +85,9 @@ For field templates and examples, read `references/log-format.md`.
 ## Resources
 
 - `scripts/collect_git_context.py`: collect branch, commit, status, diff stats, and changed files.
+- `scripts/init_project.py`: create `ai-log/`, `ai-memory/`, starter memory files, and `.ai-raw/` ignore rules.
 - `scripts/append_worklog.py`: append a standard entry to `ai-log/YYYY-MM.md`.
+- `scripts/weekly_context.py`: gather git commits, worktree status, and worklog entries for weekly summaries.
 - `references/log-format.md`: schemas for changelog, memory, public note, and audit records.
 
 ## Completion Checklist
