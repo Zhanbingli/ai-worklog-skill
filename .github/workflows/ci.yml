@@ -46,6 +46,9 @@ jobs:
           python scripts/append_worklog.py --repo "$tmp/project" --title "CI entry" --goal "Verify append" --changed "Created CI entry"
           grep '"project": "ci-project"' "$tmp/project/.ai-worklog.json"
           grep -- "- tags: ci" "$tmp/project/ai-log/ci-project/$(date +%Y-%m).md"
+          python scripts/validate_worklog.py --repo "$tmp/project" --skip-index
+          python scripts/summarize_worklog.py --repo "$tmp/project" --project "ci-project" --period weekly --write
+          test -f "$tmp/project/ai-summary/ci-project/weekly/$(date +%G-W%V).md"
           python scripts/draft_from_git.py --repo "$tmp/project" --title "CI draft" > "$tmp/draft.md"
           python scripts/weekly_context.py --repo "$tmp/project" --since 2026-01-01 > "$tmp/week.md"
           python scripts/scan_secrets.py --repo "$tmp/project"
@@ -55,9 +58,13 @@ jobs:
           git -C "$tmp/check" checkout main
           test -f "$tmp/check/ai-log/ci-project/$(date +%Y-%m).md"
           test -f "$tmp/check/ai-index/ci-project.json"
+          test -f "$tmp/check/ai-summary/ci-project/weekly/$(date +%G-W%V).md"
+          test -f "$tmp/check/ai-summary/ci-project/monthly/$(date +%Y-%m).md"
           grep "^---" "$tmp/check/ai-log/ci-project/$(date +%Y-%m).md"
+          python scripts/validate_worklog.py --repo "$tmp/check"
           python scripts/bootstrap_memory.py --remote "$tmp/remote.git" --project "ci-project" > "$tmp/bootstrap.md"
           grep "Compact Project Index" "$tmp/bootstrap.md"
+          grep "Recent Project Summaries" "$tmp/bootstrap.md"
           grep "CI publish" "$tmp/bootstrap.md"
           ! grep "Other publish" "$tmp/bootstrap.md"
           mkdir -p "$tmp/leak/ai-log/demo"

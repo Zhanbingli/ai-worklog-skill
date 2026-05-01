@@ -160,6 +160,8 @@ Remote publishing runs `scripts/scan_secrets.py` before pushing. It blocks obvio
 
 Publishing also updates `ai-index/<project>.json`, a compact machine-readable index with latest entries, decisions, and pitfalls. Bootstrap reads this first to reduce token use before falling back to Markdown sections.
 
+Publishing updates weekly and monthly rollups under `ai-summary/<project>/` unless `--no-summary` is passed. Bootstrap reads these summaries before detailed log entries.
+
 ## Git Drafting
 
 Use `scripts/draft_from_git.py` to create a draft from current git context:
@@ -197,6 +199,16 @@ python scripts/scan_secrets.py --repo .
 ```
 
 If it reports findings, remove or rewrite the flagged material. Do not publish with `--skip-scan` unless the user explicitly accepts the risk after reviewing the exact findings.
+
+## Structure Validation
+
+Use `scripts/validate_worklog.py` before committing local records:
+
+```bash
+python scripts/validate_worklog.py --repo .
+```
+
+It checks project-scoped `ai-log/<project>/YYYY-MM.md` entries for required frontmatter (`id`, `date`, `project`, `tags`, `privacy`, `commit`, `files`), required body sections (`Goal:`, `Changed:`, `Artifacts:`), project/date path consistency, memory retrieval fields, and `ai-index/<project>.json` shape.
 
 ## Project Initialization
 
@@ -241,3 +253,21 @@ python scripts/weekly_context.py --repo . --since 2026-04-24
 ```
 
 Codex should turn the output into a short private review or a sanitized public note depending on the requested audience.
+
+## Summary Rollups
+
+Use `scripts/summarize_worklog.py` to write compact machine-readable summaries:
+
+```bash
+python scripts/summarize_worklog.py --repo . --project "project-slug" --period weekly --write
+python scripts/summarize_worklog.py --repo . --project "project-slug" --period monthly --write
+```
+
+Summary files live at:
+
+```text
+ai-summary/<project>/weekly/YYYY-Www.md
+ai-summary/<project>/monthly/YYYY-MM.md
+```
+
+These are not polished public essays. They are compact retrieval aids for future agents: completed work, notable changes, decisions, pitfalls, and touched files.

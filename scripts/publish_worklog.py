@@ -17,6 +17,8 @@ import tempfile
 from pathlib import Path
 
 import scan_secrets
+import summarize_worklog
+import validate_worklog
 from ai_worklog.common import config_list, default_branch, entry_id, frontmatter, load_config, run, slugify
 
 
@@ -41,8 +43,11 @@ def append(path: Path, text: str) -> None:
 def ensure_base(repo: Path, project: str) -> None:
     (repo / "ai-log").mkdir(parents=True, exist_ok=True)
     (repo / "ai-memory").mkdir(parents=True, exist_ok=True)
+    (repo / "ai-summary").mkdir(parents=True, exist_ok=True)
     (repo / "ai-log" / project).mkdir(parents=True, exist_ok=True)
     (repo / "ai-memory" / project).mkdir(parents=True, exist_ok=True)
+    (repo / "ai-summary" / project / "weekly").mkdir(parents=True, exist_ok=True)
+    (repo / "ai-summary" / project / "monthly").mkdir(parents=True, exist_ok=True)
     (repo / "ai-index").mkdir(parents=True, exist_ok=True)
     gitignore = repo / ".gitignore"
     existing = gitignore.read_text(encoding="utf-8") if gitignore.exists() else ""
@@ -216,6 +221,7 @@ def sparse_clone_or_init(remote: str, branch: str, target: Path, project: str) -
                 ".gitignore",
                 f"ai-log/{project}",
                 f"ai-memory/{project}",
+                f"ai-summary/{project}",
                 f"ai-index/{project}.json",
             ],
             cwd=target,
@@ -258,6 +264,11 @@ def main() -> int:
         action="store_true",
         help="Skip pre-push scan. Use only after manual review.",
     )
+    parser.add_argument(
+        "--no-summary",
+        action="store_true",
+        help="Do not update weekly and monthly ai-summary files after publishing.",
+    )
     args = parser.parse_args()
     if not args.project:
         args.project = str(config.get("project") or "global")
@@ -278,8 +289,15 @@ def main() -> int:
         append(log_path, build_log_entry(args))
         append_memory(args, repo)
         update_index(args, repo)
+        if not args.no_summary:
+            anchor = dt.date.fromisoformat(args.date)
+            summarize_worklog.write_summary(repo, args.project, "weekly", anchor)
+            summarize_worklog.write_summary(repo, args.project, "monthly", anchor)
+        validation_errors = validate_worklog.validate_logs(repo) + validate_worklog.validate_indexes(repo)
+        if validation_errors:
+            raise SystemExit("Refusing to publish invalid worklog:\n" + "\n".join(validation_errors))
         if not args.skip_scan:
-            scan_result = scan_secrets.main_with_args(repo, ["README.md", "ai-log", "ai-memory", "ai-index"])
+            scan_result = scan_secrets.main_with_args(repo, ["README.md", "ai-log", "ai-memory", "ai-summary", "ai-index"])
             if scan_result != 0:
                 raise SystemExit("Refusing to publish until scan findings are removed.")
 
@@ -291,6 +309,7 @@ def main() -> int:
                 "README.md",
                 f"ai-log/{args.project}",
                 f"ai-memory/{args.project}",
+                f"ai-summary/{args.project}",
                 f"ai-index/{args.project}.json",
             ],
             cwd=repo,

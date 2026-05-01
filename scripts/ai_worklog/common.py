@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import csv
 import hashlib
 import json
 import re
@@ -53,6 +54,40 @@ def frontmatter(fields: dict[str, str | list[str]]) -> str:
             lines.append(f"{key}: {yaml_scalar(value)}")
     lines.append("---")
     return "\n".join(lines)
+
+
+def split_frontmatter_block(block: str) -> tuple[dict[str, object], str]:
+    match = re.match(r"^---\n(.*?)\n---\n?(.*)$", block.strip(), re.S)
+    if not match:
+        return {}, block.strip()
+    return parse_frontmatter(match.group(1)), match.group(2).strip()
+
+
+def parse_frontmatter(text: str) -> dict[str, object]:
+    data: dict[str, object] = {}
+    for raw_line in text.splitlines():
+        line = raw_line.strip()
+        if not line or ":" not in line:
+            continue
+        key, value = line.split(":", 1)
+        key = key.strip()
+        value = value.strip()
+        if value.startswith("[") and value.endswith("]"):
+            inner = value[1:-1].strip()
+            if not inner:
+                data[key] = []
+            else:
+                data[key] = next(csv.reader([inner], skipinitialspace=True, escapechar="\\"))
+        else:
+            data[key] = value.strip('"').replace('\\"', '"').replace("\\\\", "\\")
+    return data
+
+
+def iter_markdown_entries(text: str) -> list[str]:
+    return [
+        match.group(0).strip()
+        for match in re.finditer(r"(?ms)^---\n.*?\n---\n.*?(?=^---\n|\Z)", text)
+    ]
 
 
 def default_branch(remote: str, fallback: str = "main") -> str:

@@ -77,7 +77,7 @@ def sparse_clone(remote: str, branch: str, target: Path, project: str, include_l
             str(target),
         ]
     )
-    paths = [f"ai-index/{project}.json", f"ai-log/{project}", f"ai-memory/{project}"]
+    paths = [f"ai-index/{project}.json", f"ai-summary/{project}", f"ai-log/{project}", f"ai-memory/{project}"]
     if include_legacy:
         paths.extend(["ai-log/*.md", "ai-memory/*.md"])
     run(["git", "sparse-checkout", "init", "--no-cone"], cwd=target)
@@ -118,6 +118,19 @@ def read_matching_logs(repo: Path, project: str, include_legacy: bool, max_entri
                 if len(entries) >= max_entries:
                     return entries
     return entries
+
+
+def read_summaries(repo: Path, project: str, max_sections: int) -> list[str]:
+    summary_root = repo / "ai-summary" / project
+    paths = sorted(summary_root.glob("monthly/*.md"), reverse=True)
+    paths.extend(sorted(summary_root.glob("weekly/*.md"), reverse=True))
+    summaries: list[str] = []
+    for path in paths:
+        if path.exists():
+            summaries.append(f"## {path.relative_to(repo)}\n\n{path.read_text(encoding='utf-8').strip()}")
+            if len(summaries) >= max_sections:
+                break
+    return summaries
 
 
 def read_index(repo: Path, project: str) -> dict[str, object]:
@@ -172,6 +185,7 @@ def main() -> int:
     )
     parser.add_argument("--max-log-entries", type=int, default=5)
     parser.add_argument("--max-memory-sections", type=int, default=5)
+    parser.add_argument("--max-summary-sections", type=int, default=2)
     parser.add_argument("--max-chars", type=int, default=12000)
     args = parser.parse_args()
 
@@ -181,6 +195,7 @@ def main() -> int:
         clone = Path(tmp) / "repo"
         sparse_clone(args.remote, branch, clone, project, args.include_legacy)
         index = read_index(clone, project)
+        summaries = read_summaries(clone, project, args.max_summary_sections)
         memory = read_matching_memory(clone, project, args.include_legacy, args.max_memory_sections)
         logs = read_matching_logs(clone, project, args.include_legacy, args.max_log_entries)
 
@@ -193,6 +208,8 @@ def main() -> int:
             "",
         ]
         parts.extend(render_index(index))
+        if summaries:
+            parts.extend(["## Recent Project Summaries", "", "\n\n".join(summaries), ""])
         for name, sections in memory.items():
             if not sections:
                 continue

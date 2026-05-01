@@ -68,6 +68,12 @@ python ~/.codex/skills/ai-worklog/scripts/scan_secrets.py --repo .
 
 Remote publishing runs this scan by default and refuses to push obvious secrets or raw transcript markers.
 
+Validate local worklog structure:
+
+```bash
+python ~/.codex/skills/ai-worklog/scripts/validate_worklog.py --repo .
+```
+
 Load only current-project memory at the start of a new session:
 
 ```bash
@@ -76,7 +82,7 @@ python ~/.codex/skills/ai-worklog/scripts/bootstrap_memory.py --repo .
 
 Records are stored under `ai-log/<project>/` and `ai-memory/<project>/`, so publish with stable project slugs and tags. Bootstrap uses sparse checkout to fetch only those project paths. Use `--max-chars`, `--max-log-entries`, and `--max-memory-sections` to keep startup context small.
 
-Publishing also maintains `ai-index/<project>.json`, a compact machine-readable summary that bootstrap reads first to reduce token use.
+Publishing also maintains `ai-index/<project>.json`, a compact machine-readable summary that bootstrap reads first to reduce token use. It also maintains `ai-summary/<project>/weekly/` and `ai-summary/<project>/monthly/` so future agents can read rollups before detailed entries.
 
 For project-level startup behavior, add this to that project's `AGENTS.md`:
 
@@ -124,6 +130,12 @@ Then ask Codex:
 Use $ai-worklog to turn this weekly context into a private weekly review and a sanitized build-in-public draft.
 ```
 
+Generate a compact weekly or monthly rollup from project-scoped logs:
+
+```bash
+python ~/.codex/skills/ai-worklog/scripts/summarize_worklog.py --repo . --project "project-slug" --period weekly --write
+```
+
 Privacy defaults:
 
 - `public`: safe for GitHub or build-in-public.
@@ -147,7 +159,10 @@ python ~/.codex/skills/ai-worklog/scripts/migrate_legacy_logs.py --repo /path/to
 - `scripts/draft_from_git.py`: generate a draft worklog entry from git status, commits, diff stats, and changed files.
 - `scripts/publish_worklog.py`: publish a sanitized entry to a remote worklog repo using only a temporary clone.
 - `scripts/scan_secrets.py`: scan worklog files for obvious secrets, tokens, private key markers, and raw transcript markers.
+- `scripts/validate_worklog.py`: validate project-scoped worklog structure and machine-readable indexes.
+- `scripts/summarize_worklog.py`: generate compact weekly or monthly summaries for future agent bootstrap.
 - `scripts/weekly_context.py`: collect context for weekly reviews.
 - `scripts/migrate_legacy_logs.py`: copy old `ai-log/YYYY-MM.md` and `ai-memory/*.md` sections into project directories.
+- `ai-summary/<project>/`: generated weekly and monthly rollups.
 - `ai-index/<project>.json`: generated in worklog repositories by `publish_worklog.py` for compact retrieval.
 - `references/log-format.md`: templates for changelog, project memory, public notes, and audit records.
