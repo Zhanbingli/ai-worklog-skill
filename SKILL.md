@@ -33,6 +33,10 @@ Do not justify this workflow using broad claims about "literate vs oral" culture
    ```bash
    python ~/.codex/skills/ai-worklog/scripts/collect_git_context.py --repo .
    ```
+   For a fuller draft from git context, use:
+   ```bash
+   python ~/.codex/skills/ai-worklog/scripts/draft_from_git.py --repo .
+   ```
 4. Write or update the smallest useful record:
    - Use `ai-log/YYYY-MM.md` for completed task summaries.
    - Use `ai-memory/decisions.md` for durable decisions.
@@ -49,6 +53,8 @@ python ~/.codex/skills/ai-worklog/scripts/publish_worklog.py --title "Short task
 ```
 
 This script clones the worklog repository into a temporary directory, writes sanitized records, pushes the commit, and removes the temporary directory. Never use it for raw transcripts, secrets, private data, or audit logs.
+
+Remote publishing runs `scan_secrets.py` before pushing. If it finds obvious tokens, private-key markers, `.env` references, or raw transcript markers, remove them instead of bypassing the scan.
 
 For another user, ask them to create a repository like `https://github.com/<user>/ai-worklog.git`, then run:
 
@@ -103,7 +109,9 @@ For field templates and examples, read `references/log-format.md`.
 - `scripts/collect_git_context.py`: collect branch, commit, status, diff stats, and changed files.
 - `scripts/init_project.py`: create `ai-log/`, `ai-memory/`, starter memory files, and `.ai-raw/` ignore rules.
 - `scripts/append_worklog.py`: append a standard entry to `ai-log/YYYY-MM.md`.
+- `scripts/draft_from_git.py`: generate a draft entry from git context for Codex to rewrite.
 - `scripts/publish_worklog.py`: publish a sanitized entry to a remote worklog repository through a temporary clone that is cleaned automatically.
+- `scripts/scan_secrets.py`: scan records for obvious secrets and raw transcript markers before publication.
 - `scripts/weekly_context.py`: gather git commits, worktree status, and worklog entries for weekly summaries.
 - `references/log-format.md`: schemas for changelog, memory, public note, and audit records.
 

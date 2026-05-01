@@ -1,0 +1,53 @@
+name: CI
+
+on:
+  push:
+  pull_request:
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - name: Compile scripts
+        run: python -m py_compile scripts/*.py
+      - name: Validate SKILL frontmatter
+        run: |
+          python - <<'PY'
+          from pathlib import Path
+          import re
+
+          text = Path("SKILL.md").read_text()
+          match = re.match(r"^---\n(.*?)\n---", text, re.S)
+          if not match:
+              raise SystemExit("missing YAML frontmatter")
+          frontmatter = match.group(1)
+          fields = dict(
+              line.split(":", 1)
+              for line in frontmatter.splitlines()
+              if ":" in line
+          )
+          if fields.get("name", "").strip() != "ai-worklog":
+              raise SystemExit("invalid skill name")
+          if not fields.get("description", "").strip():
+              raise SystemExit("missing description")
+          PY
+      - name: End-to-end script test
+        run: |
+          set -euo pipefail
+          tmp="$(mktemp -d)"
+          git init -b main "$tmp/project"
+          python scripts/init_project.py --repo "$tmp/project"
+          touch "$tmp/project/app.py"
+          python scripts/append_worklog.py --repo "$tmp/project" --title "CI entry" --goal "Verify append" --changed "Created CI entry"
+          python scripts/draft_from_git.py --repo "$tmp/project" --title "CI draft" > "$tmp/draft.md"
+          python scripts/weekly_context.py --repo "$tmp/project" --since 2026-01-01 > "$tmp/week.md"
+          python scripts/scan_secrets.py --repo "$tmp/project"
+          git init --bare "$tmp/remote.git"
+          python scripts/publish_worklog.py --remote "$tmp/remote.git" --title "CI publish" --goal "Verify publish" --changed "Published entry" --file scripts/publish_worklog.py
+          git clone "$tmp/remote.git" "$tmp/check"
+          git -C "$tmp/check" checkout main
+          test -f "$tmp/check/ai-log/$(date +%Y-%m).md"

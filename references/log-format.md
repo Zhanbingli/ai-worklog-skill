@@ -142,6 +142,28 @@ python scripts/publish_worklog.py --remote "https://github.com/<user>/ai-worklog
 
 The script uses a temporary clone, commits only `.gitignore`, `README.md`, `ai-log/`, and `ai-memory/`, pushes, and cleans the temporary directory.
 
+Remote publishing runs `scripts/scan_secrets.py` before pushing. It blocks obvious API keys, GitHub tokens, private key blocks, assignment-style secrets such as `token=...`, `.env` references, and raw transcript markers.
+
+## Git Drafting
+
+Use `scripts/draft_from_git.py` to create a draft from current git context:
+
+```bash
+python scripts/draft_from_git.py --repo . --title "Task title" --goal "One-sentence goal"
+```
+
+Codex should rewrite the `Changed`, `Decision`, and `Pitfall` sections from the git context and user-provided task history before publishing.
+
+## Secret Scan
+
+Use `scripts/scan_secrets.py` before committing or publishing local worklogs:
+
+```bash
+python scripts/scan_secrets.py --repo .
+```
+
+If it reports findings, remove or rewrite the flagged material. Do not publish with `--skip-scan` unless the user explicitly accepts the risk after reviewing the exact findings.
+
 ## Project Initialization
 
 Use `scripts/init_project.py` once per repository:

@@ -15,6 +15,8 @@ import sys
 import tempfile
 from pathlib import Path
 
+import scan_secrets
+
 
 DEFAULT_REMOTE = "https://github.com/Zhanbingli/ai-worklog.git"
 
@@ -154,6 +156,11 @@ def main() -> int:
     parser.add_argument("--memory-decision", action="append", default=[])
     parser.add_argument("--memory-pitfall", action="append", default=[])
     parser.add_argument("--message", default="")
+    parser.add_argument(
+        "--skip-scan",
+        action="store_true",
+        help="Skip pre-push scan. Use only after manual review.",
+    )
     args = parser.parse_args()
 
     with tempfile.TemporaryDirectory(prefix="ai-worklog-publish-") as tmp:
@@ -166,6 +173,10 @@ def main() -> int:
             log_path.write_text(f"# {month} AI Worklog\n\n", encoding="utf-8")
         append(log_path, build_log_entry(args))
         append_memory(args, repo)
+        if not args.skip_scan:
+            scan_result = scan_secrets.main_with_args(repo, ["README.md", "ai-log", "ai-memory"])
+            if scan_result != 0:
+                raise SystemExit("Refusing to publish until scan findings are removed.")
 
         run(["git", "add", ".gitignore", "README.md", "ai-log", "ai-memory"], cwd=repo)
         if not run(["git", "status", "--short"], cwd=repo):

@@ -54,6 +54,20 @@ python ~/.codex/skills/ai-worklog/scripts/publish_worklog.py --remote "https://g
 
 `publish_worklog.py` uses a temporary clone, pushes the sanitized Markdown records, and removes the temporary directory when it exits. Do not use it for raw transcripts, secrets, private data, or audit logs.
 
+Draft an entry from a project before publishing:
+
+```bash
+python ~/.codex/skills/ai-worklog/scripts/draft_from_git.py --repo .
+```
+
+Scan a local worklog before committing or publishing:
+
+```bash
+python ~/.codex/skills/ai-worklog/scripts/scan_secrets.py --repo .
+```
+
+Remote publishing runs this scan by default and refuses to push obvious secrets or raw transcript markers.
+
 ### Project-local records
 
 Initialize a project once:
@@ -101,6 +115,8 @@ Privacy defaults:
 - `scripts/init_project.py`: initialize a project for worklogs and private raw logs.
 - `scripts/collect_git_context.py`: collect git status, diff stats, branch, and changed files.
 - `scripts/append_worklog.py`: create and append `ai-log/YYYY-MM.md` entries.
+- `scripts/draft_from_git.py`: generate a draft worklog entry from git status, commits, diff stats, and changed files.
 - `scripts/publish_worklog.py`: publish a sanitized entry to a remote worklog repo using only a temporary clone.
+- `scripts/scan_secrets.py`: scan worklog files for obvious secrets, tokens, private key markers, and raw transcript markers.
 - `scripts/weekly_context.py`: collect context for weekly reviews.
 - `references/log-format.md`: templates for changelog, project memory, public notes, and audit records.
