@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import hashlib
+import json
 import re
 import subprocess
 from pathlib import Path
@@ -60,3 +61,31 @@ def default_branch(remote: str, fallback: str = "main") -> str:
         if line.startswith("ref: refs/heads/") and line.endswith("\tHEAD"):
             return line.split("refs/heads/", 1)[1].split("\t", 1)[0]
     return fallback
+
+
+def load_config(start: Path | None = None) -> dict[str, object]:
+    root = (start or Path.cwd()).resolve()
+    candidates = []
+    if root.is_file():
+        candidates.append(root)
+        root = root.parent
+    candidates.append(root / ".ai-worklog.json")
+    git_root = run(["git", "-C", str(root), "rev-parse", "--show-toplevel"], check=False)
+    if git_root:
+        candidates.append(Path(git_root) / ".ai-worklog.json")
+    candidates.append(Path.cwd() / ".ai-worklog.json")
+    for path in candidates:
+        if path.exists():
+            data = json.loads(path.read_text(encoding="utf-8"))
+            if isinstance(data, dict):
+                return data
+    return {}
+
+
+def config_list(config: dict[str, object], key: str) -> list[str]:
+    value = config.get(key)
+    if isinstance(value, list):
+        return [str(item) for item in value]
+    if isinstance(value, str) and value:
+        return [value]
+    return []

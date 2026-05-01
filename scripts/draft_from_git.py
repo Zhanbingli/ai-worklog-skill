@@ -10,6 +10,8 @@ import subprocess
 import sys
 from pathlib import Path
 
+from ai_worklog.common import load_config
+
 
 def run_git(repo: Path, *args: str) -> str:
     proc = subprocess.run(
@@ -56,6 +58,10 @@ def slugify(value: str) -> str:
 
 def main() -> int:
     today = dt.date.today().isoformat()
+    early = argparse.ArgumentParser(add_help=False)
+    early.add_argument("--repo", default=".")
+    early_args, _ = early.parse_known_args()
+    config = load_config(Path(early_args.repo).resolve())
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--repo", default=".", help="Repository to inspect")
     parser.add_argument("--since", default="HEAD~1", help="Ref/date for commit context")
@@ -66,7 +72,7 @@ def main() -> int:
     args = parser.parse_args()
 
     repo = git_root(Path(args.repo).resolve())
-    project = slugify(args.project or repo.name)
+    project = slugify(args.project or str(config.get("project") or repo.name))
     branch = run_git(repo, "branch", "--show-current") or "detached"
     head = run_git(repo, "log", "-1", "--pretty=format:%h %s")
     status = run_git(repo, "status", "--short")

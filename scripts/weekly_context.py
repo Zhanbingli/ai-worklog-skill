@@ -10,6 +10,8 @@ import subprocess
 import sys
 from pathlib import Path
 
+from ai_worklog.common import load_config
+
 
 def run_git(repo: Path, *args: str) -> str:
     proc = subprocess.run(
@@ -70,6 +72,10 @@ def section(title: str, body: str) -> str:
 def main() -> int:
     today = dt.date.today()
     default_since = today - dt.timedelta(days=7)
+    early = argparse.ArgumentParser(add_help=False)
+    early.add_argument("--repo", default=".")
+    early_args, _ = early.parse_known_args()
+    config = load_config(Path(early_args.repo).resolve())
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--repo", default=".", help="Repository to summarize")
     parser.add_argument("--project", default="", help="Project slug. Defaults to repo name.")
@@ -79,7 +85,7 @@ def main() -> int:
     args = parser.parse_args()
 
     repo = git_root(Path(args.repo).resolve())
-    project = slugify(args.project or repo.name)
+    project = slugify(args.project or str(config.get("project") or repo.name))
     since = dt.date.fromisoformat(args.since)
     until = dt.date.fromisoformat(args.until)
 

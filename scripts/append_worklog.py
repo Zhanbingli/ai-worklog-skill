@@ -9,7 +9,7 @@ import subprocess
 import sys
 from pathlib import Path
 
-from ai_worklog.common import entry_id, frontmatter, slugify
+from ai_worklog.common import config_list, entry_id, frontmatter, load_config, slugify
 
 
 def run_git(repo: Path, *args: str) -> str:
@@ -107,6 +107,10 @@ def build_entry(args: argparse.Namespace, repo: Path) -> str:
 
 def main() -> int:
     today = dt.date.today().isoformat()
+    early = argparse.ArgumentParser(add_help=False)
+    early.add_argument("--repo", default=".")
+    early_args, _ = early.parse_known_args()
+    config = load_config(Path(early_args.repo).resolve())
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--repo", default=".", help="Repository to log work for")
     parser.add_argument("--title", required=True, help="Short task title")
@@ -132,8 +136,10 @@ def main() -> int:
 
     repo = git_root(Path(args.repo).resolve())
     if not args.project:
-        args.project = slugify(repo.name)
+        args.project = str(config.get("project") or repo.name)
     args.project = slugify(args.project)
+    if not args.tag:
+        args.tag = config_list(config, "default_tags")
     entry = build_entry(args, repo)
     month = args.date[:7]
     path = repo / args.log_dir / args.project / f"{month}.md"

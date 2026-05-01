@@ -11,7 +11,7 @@ import subprocess
 import tempfile
 from pathlib import Path
 
-from ai_worklog.common import default_branch, run, slugify
+from ai_worklog.common import default_branch, load_config, run, slugify
 
 
 DEFAULT_REMOTE = "https://github.com/Zhanbingli/ai-worklog.git"
@@ -153,8 +153,15 @@ def render_index(data: dict[str, object]) -> list[str]:
 
 
 def main() -> int:
+    early = argparse.ArgumentParser(add_help=False)
+    early.add_argument("--repo", default=".")
+    early_args, _ = early.parse_known_args()
+    config = load_config(Path(early_args.repo).resolve())
     parser = argparse.ArgumentParser(description=__doc__)
-    parser.add_argument("--remote", default=os.environ.get("AI_WORKLOG_REMOTE", DEFAULT_REMOTE))
+    parser.add_argument(
+        "--remote",
+        default=os.environ.get("AI_WORKLOG_REMOTE") or str(config.get("remote") or DEFAULT_REMOTE),
+    )
     parser.add_argument("--branch", default="", help="Remote branch. Defaults to remote HEAD, then main.")
     parser.add_argument("--repo", default=".", help="Current project repo used to infer project slug")
     parser.add_argument("--project", default="", help="Project slug. Defaults to current repo name/remote")
@@ -168,7 +175,7 @@ def main() -> int:
     parser.add_argument("--max-chars", type=int, default=12000)
     args = parser.parse_args()
 
-    project = slugify(args.project) if args.project else infer_project(Path(args.repo).resolve())
+    project = slugify(args.project or str(config.get("project") or "")) if (args.project or config.get("project")) else infer_project(Path(args.repo).resolve())
     branch = args.branch or default_branch(args.remote)
     with tempfile.TemporaryDirectory(prefix="ai-worklog-bootstrap-") as tmp:
         clone = Path(tmp) / "repo"

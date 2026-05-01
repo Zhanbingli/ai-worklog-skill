@@ -17,7 +17,7 @@ import tempfile
 from pathlib import Path
 
 import scan_secrets
-from ai_worklog.common import default_branch, entry_id, frontmatter, run, slugify
+from ai_worklog.common import config_list, default_branch, entry_id, frontmatter, load_config, run, slugify
 
 
 DEFAULT_REMOTE = "https://github.com/Zhanbingli/ai-worklog.git"
@@ -231,8 +231,12 @@ def sparse_clone_or_init(remote: str, branch: str, target: Path, project: str) -
 
 def main() -> int:
     today = dt.date.today().isoformat()
+    config = load_config(Path.cwd())
     parser = argparse.ArgumentParser(description=__doc__)
-    parser.add_argument("--remote", default=os.environ.get("AI_WORKLOG_REMOTE", DEFAULT_REMOTE))
+    parser.add_argument(
+        "--remote",
+        default=os.environ.get("AI_WORKLOG_REMOTE") or str(config.get("remote") or DEFAULT_REMOTE),
+    )
     parser.add_argument("--branch", default="", help="Remote branch. Defaults to remote HEAD, then main.")
     parser.add_argument("--title", required=True)
     parser.add_argument("--goal", default="")
@@ -256,8 +260,10 @@ def main() -> int:
     )
     args = parser.parse_args()
     if not args.project:
-        args.project = "global"
+        args.project = str(config.get("project") or "global")
     args.project = slugify(args.project)
+    if not args.tag:
+        args.tag = config_list(config, "default_tags")
     args.branch = args.branch or default_branch(args.remote)
 
     with tempfile.TemporaryDirectory(prefix="ai-worklog-publish-") as tmp:

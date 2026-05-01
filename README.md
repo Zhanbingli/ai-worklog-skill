@@ -93,8 +93,10 @@ Use only the returned project-scoped context. Do not persist the remote worklog 
 Initialize a project once:
 
 ```bash
-python ~/.codex/skills/ai-worklog/scripts/init_project.py --repo .
+python ~/.codex/skills/ai-worklog/scripts/init_project.py --repo . --project "project-slug" --remote "https://github.com/<user>/ai-worklog.git"
 ```
+
+This writes `.ai-worklog.json` so later commands can infer the project, remote, and default tags.
 
 After an AI-assisted task, ask Codex:
 
@@ -129,6 +131,12 @@ Privacy defaults:
 - `private`: keep gitignored under `.ai-raw/`.
 - `never`: do not record secrets, tokens, PHI, private account data, or long prompt transcripts.
 
+Migrate old global files into project directories:
+
+```bash
+python ~/.codex/skills/ai-worklog/scripts/migrate_legacy_logs.py --repo /path/to/ai-worklog --default-project "project-slug"
+```
+
 ## Files
 
 - `SKILL.md`: workflow and usage rules.
@@ -140,5 +148,6 @@ Privacy defaults:
 - `scripts/publish_worklog.py`: publish a sanitized entry to a remote worklog repo using only a temporary clone.
 - `scripts/scan_secrets.py`: scan worklog files for obvious secrets, tokens, private key markers, and raw transcript markers.
 - `scripts/weekly_context.py`: collect context for weekly reviews.
+- `scripts/migrate_legacy_logs.py`: copy old `ai-log/YYYY-MM.md` and `ai-memory/*.md` sections into project directories.
 - `ai-index/<project>.json`: generated in worklog repositories by `publish_worklog.py` for compact retrieval.
 - `references/log-format.md`: templates for changelog, project memory, public notes, and audit records.

@@ -4,6 +4,7 @@
 from __future__ import annotations
 
 import argparse
+import json
 import re
 import subprocess
 import sys
@@ -62,6 +63,9 @@ def main() -> int:
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--repo", default=".", help="Repository to initialize")
     parser.add_argument("--project", default="", help="Project slug for log directories")
+    parser.add_argument("--remote", default="", help="Default remote worklog repository for .ai-worklog.json")
+    parser.add_argument("--tag", action="append", default=[], help="Default tag to write into .ai-worklog.json")
+    parser.add_argument("--no-config", action="store_true", help="Do not write .ai-worklog.json")
     parser.add_argument("--dry-run", action="store_true", help="Print planned changes")
     args = parser.parse_args()
 
@@ -88,6 +92,17 @@ def main() -> int:
 
     if ensure_gitignore_entry(repo / ".gitignore", ".ai-raw/", args.dry_run):
         planned.append("add .ai-raw/ to .gitignore")
+
+    config_path = repo / ".ai-worklog.json"
+    if not args.no_config and not config_path.exists():
+        config = {
+            "project": project,
+            "remote": args.remote,
+            "default_tags": args.tag,
+        }
+        planned.append("create file: .ai-worklog.json")
+        if not args.dry_run:
+            config_path.write_text(json.dumps(config, ensure_ascii=False, indent=2) + "\n", encoding="utf-8")
 
     if planned:
         print("\n".join(planned))

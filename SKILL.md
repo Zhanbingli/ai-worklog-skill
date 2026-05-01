@@ -33,8 +33,9 @@ Do not justify this workflow using broad claims about "literate vs oral" culture
    Use `--project PROJECT_SLUG` when the current directory name is not the right project key. Use `--include-legacy` only when the user wants old global-format records.
 2. If the project has no worklog structure, initialize it:
    ```bash
-   python ~/.codex/skills/ai-worklog/scripts/init_project.py --repo .
+   python ~/.codex/skills/ai-worklog/scripts/init_project.py --repo . --project PROJECT_SLUG --remote WORKLOG_REMOTE
    ```
+   This creates `.ai-worklog.json`, so later publish/bootstrap/draft commands can infer project, remote, and default tags.
 3. Identify the audience: self, public readers, future agent, or audit/debug.
 4. Inspect the current repo state before writing records:
    ```bash
@@ -126,6 +127,7 @@ For field templates and examples, read `references/log-format.md`.
 - `scripts/publish_worklog.py`: publish a sanitized entry to a remote worklog repository through a temporary clone that is cleaned automatically.
 - `scripts/scan_secrets.py`: scan records for obvious secrets and raw transcript markers before publication.
 - `scripts/weekly_context.py`: gather git commits, worktree status, and worklog entries for weekly summaries.
+- `scripts/migrate_legacy_logs.py`: copy old global log and memory files into project-scoped directories.
 - `references/log-format.md`: schemas for changelog, memory, public note, and audit records.
 
 ## Completion Checklist

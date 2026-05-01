@@ -203,10 +203,34 @@ If it reports findings, remove or rewrite the flagged material. Do not publish w
 Use `scripts/init_project.py` once per repository:
 
 ```bash
-python scripts/init_project.py --repo .
+python scripts/init_project.py --repo . --project "project-slug" --remote "https://github.com/<user>/ai-worklog.git" --tag "tag"
 ```
 
-It creates `ai-log/<project>/`, `ai-memory/<project>/decisions.md`, `ai-memory/<project>/pitfalls.md`, `ai-memory/<project>/prompts.md`, `.ai-raw/`, and a `.gitignore` entry for `.ai-raw/`.
+It creates `ai-log/<project>/`, `ai-memory/<project>/decisions.md`, `ai-memory/<project>/pitfalls.md`, `ai-memory/<project>/prompts.md`, `.ai-raw/`, `.ai-worklog.json`, and a `.gitignore` entry for `.ai-raw/`.
+
+## Project Configuration
+
+`.ai-worklog.json` is intentional project configuration, not cache:
+
+```json
+{
+  "project": "project-slug",
+  "remote": "https://github.com/<user>/ai-worklog.git",
+  "default_tags": ["tag"]
+}
+```
+
+`publish_worklog.py`, `bootstrap_memory.py`, `append_worklog.py`, `draft_from_git.py`, and `weekly_context.py` read this file when command-line arguments do not override it.
+
+## Legacy Migration
+
+Use `scripts/migrate_legacy_logs.py` to copy old global-format records into project directories:
+
+```bash
+python scripts/migrate_legacy_logs.py --repo /path/to/ai-worklog --default-project "project-slug"
+```
+
+The migration is additive and idempotent: it copies sections into `ai-log/<project>/` and `ai-memory/<project>/` without deleting old files.
 
 ## Weekly Summary Context
 

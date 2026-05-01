@@ -40,14 +40,16 @@ jobs:
           set -euo pipefail
           tmp="$(mktemp -d)"
           git init -b main "$tmp/project"
-          python scripts/init_project.py --repo "$tmp/project"
+          git init --bare "$tmp/remote.git"
+          python scripts/init_project.py --repo "$tmp/project" --project "ci-project" --remote "$tmp/remote.git" --tag "ci"
           touch "$tmp/project/app.py"
-          python scripts/append_worklog.py --repo "$tmp/project" --project "ci-project" --title "CI entry" --goal "Verify append" --changed "Created CI entry"
-          python scripts/draft_from_git.py --repo "$tmp/project" --project "ci-project" --title "CI draft" > "$tmp/draft.md"
+          python scripts/append_worklog.py --repo "$tmp/project" --title "CI entry" --goal "Verify append" --changed "Created CI entry"
+          grep '"project": "ci-project"' "$tmp/project/.ai-worklog.json"
+          grep -- "- tags: ci" "$tmp/project/ai-log/ci-project/$(date +%Y-%m).md"
+          python scripts/draft_from_git.py --repo "$tmp/project" --title "CI draft" > "$tmp/draft.md"
           python scripts/weekly_context.py --repo "$tmp/project" --since 2026-01-01 > "$tmp/week.md"
           python scripts/scan_secrets.py --repo "$tmp/project"
-          git init --bare "$tmp/remote.git"
-          python scripts/publish_worklog.py --remote "$tmp/remote.git" --project "ci-project" --title "CI publish" --goal "Verify publish" --changed "Published entry" --file scripts/publish_worklog.py
+          (cd "$tmp/project" && python "$GITHUB_WORKSPACE/scripts/publish_worklog.py" --title "CI publish" --goal "Verify publish" --changed "Published entry" --file scripts/publish_worklog.py)
           python scripts/publish_worklog.py --remote "$tmp/remote.git" --project "other-project" --title "Other publish" --goal "Verify filtering" --changed "Should not appear in ci-project bootstrap"
           git clone "$tmp/remote.git" "$tmp/check"
           git -C "$tmp/check" checkout main
@@ -61,3 +63,9 @@ jobs:
           mkdir -p "$tmp/leak/ai-log/demo"
           printf 'token=abcdefghijklmnopqrstuvwxyz\n' > "$tmp/leak/ai-log/demo/test.md"
           ! python scripts/scan_secrets.py --repo "$tmp/leak"
+          mkdir -p "$tmp/legacy/ai-log" "$tmp/legacy/ai-memory"
+          printf '# 2026-05 AI Worklog\n\n## 2026-05-01 - Legacy\n\nArtifacts:\n- project: legacy-project\n' > "$tmp/legacy/ai-log/2026-05.md"
+          printf '# AI Project Decisions\n\n## 2026-05-01 - Legacy decision\n\nProject: legacy-project\nDecision: Keep compatibility.\n' > "$tmp/legacy/ai-memory/decisions.md"
+          python scripts/migrate_legacy_logs.py --repo "$tmp/legacy"
+          test -f "$tmp/legacy/ai-log/legacy-project/2026-05.md"
+          test -f "$tmp/legacy/ai-memory/legacy-project/decisions.md"
