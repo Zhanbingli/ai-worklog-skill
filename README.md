@@ -43,13 +43,13 @@ export AI_WORKLOG_REMOTE="https://github.com/<user>/ai-worklog.git"
 Publish a public-safe entry without keeping a local worklog checkout:
 
 ```bash
-python ~/.codex/skills/ai-worklog/scripts/publish_worklog.py --title "Task title" --goal "One-sentence goal" --changed "Concrete result"
+python ~/.codex/skills/ai-worklog/scripts/publish_worklog.py --project "project-slug" --title "Task title" --goal "One-sentence goal" --changed "Concrete result"
 ```
 
 For another repository:
 
 ```bash
-python ~/.codex/skills/ai-worklog/scripts/publish_worklog.py --remote "https://github.com/<user>/ai-worklog.git" --title "Task title" --goal "One-sentence goal" --changed "Concrete result"
+python ~/.codex/skills/ai-worklog/scripts/publish_worklog.py --remote "https://github.com/<user>/ai-worklog.git" --project "project-slug" --title "Task title" --goal "One-sentence goal" --changed "Concrete result"
 ```
 
 `publish_worklog.py` uses a temporary clone, pushes the sanitized Markdown records, and removes the temporary directory when it exits. Do not use it for raw transcripts, secrets, private data, or audit logs.
@@ -67,6 +67,24 @@ python ~/.codex/skills/ai-worklog/scripts/scan_secrets.py --repo .
 ```
 
 Remote publishing runs this scan by default and refuses to push obvious secrets or raw transcript markers.
+
+Load only current-project memory at the start of a new session:
+
+```bash
+python ~/.codex/skills/ai-worklog/scripts/bootstrap_memory.py --repo .
+```
+
+Records are filtered by `project:`/`Project:` fields, so publish with stable project slugs and tags. Use `--max-chars`, `--max-log-entries`, and `--max-memory-sections` to keep startup context small.
+
+For project-level startup behavior, add this to that project's `AGENTS.md`:
+
+```md
+At the start of substantial work, use $ai-worklog and run:
+
+python ~/.codex/skills/ai-worklog/scripts/bootstrap_memory.py --repo .
+
+Use only the returned project-scoped context. Do not persist the remote worklog clone locally.
+```
 
 ### Project-local records
 
@@ -114,6 +132,7 @@ Privacy defaults:
 - `SKILL.md`: workflow and usage rules.
 - `scripts/init_project.py`: initialize a project for worklogs and private raw logs.
 - `scripts/collect_git_context.py`: collect git status, diff stats, branch, and changed files.
+- `scripts/bootstrap_memory.py`: load compact current-project memory from the remote worklog repo without keeping a local clone.
 - `scripts/append_worklog.py`: create and append `ai-log/YYYY-MM.md` entries.
 - `scripts/draft_from_git.py`: generate a draft worklog entry from git status, commits, diff stats, and changed files.
 - `scripts/publish_worklog.py`: publish a sanitized entry to a remote worklog repo using only a temporary clone.

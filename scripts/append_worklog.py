@@ -5,6 +5,7 @@ from __future__ import annotations
 
 import argparse
 import datetime as dt
+import re
 import subprocess
 import sys
 from pathlib import Path
@@ -61,6 +62,13 @@ def bullet_lines(items: list[str], fallback: str = "Not specified.") -> str:
     return "\n".join(f"- {item}" for item in values)
 
 
+def slugify(value: str) -> str:
+    value = value.strip().lower()
+    value = re.sub(r"[^a-z0-9._/-]+", "-", value)
+    value = re.sub(r"-+", "-", value).strip("-")
+    return value or "unknown"
+
+
 def build_entry(args: argparse.Namespace, repo: Path) -> str:
     files = args.file or changed_files(repo)
     commit = args.commit or current_commit(repo)
@@ -74,6 +82,8 @@ def build_entry(args: argparse.Namespace, repo: Path) -> str:
         bullet_lines(args.changed),
         "",
         "Artifacts:",
+        f"- project: {args.project}",
+        f"- tags: {', '.join(args.tag) if args.tag else 'none'}",
         f"- commit: {commit}",
         f"- files: {', '.join(files) if files else 'none'}",
         f"- privacy: {args.privacy}",
@@ -100,6 +110,8 @@ def main() -> int:
     parser.add_argument("--next", action="append", default=[], help="Follow-up item")
     parser.add_argument("--file", action="append", default=[], help="Artifact file path")
     parser.add_argument("--commit", default="", help="Commit sha, or pending")
+    parser.add_argument("--project", default="", help="Project slug for future memory filtering")
+    parser.add_argument("--tag", action="append", default=[], help="Optional tag for retrieval")
     parser.add_argument(
         "--privacy",
         choices=["public", "project", "private"],
@@ -112,6 +124,9 @@ def main() -> int:
     args = parser.parse_args()
 
     repo = git_root(Path(args.repo).resolve())
+    if not args.project:
+        args.project = slugify(repo.name)
+    args.project = slugify(args.project)
     entry = build_entry(args, repo)
     month = args.date[:7]
     path = repo / args.log_dir / f"{month}.md"

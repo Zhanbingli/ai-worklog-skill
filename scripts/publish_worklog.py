@@ -10,6 +10,7 @@ from __future__ import annotations
 import argparse
 import datetime as dt
 import os
+import re
 import subprocess
 import sys
 import tempfile
@@ -41,6 +42,13 @@ def bullet_lines(items: list[str], fallback: str = "Not specified.") -> str:
     if not values:
         values = [fallback]
     return "\n".join(f"- {item}" for item in values)
+
+
+def slugify(value: str) -> str:
+    value = value.strip().lower()
+    value = re.sub(r"[^a-z0-9._/-]+", "-", value)
+    value = re.sub(r"-+", "-", value).strip("-")
+    return value or "unknown"
 
 
 def append(path: Path, text: str) -> None:
@@ -88,6 +96,8 @@ def build_log_entry(args: argparse.Namespace) -> str:
         bullet_lines(args.changed),
         "",
         "Artifacts:",
+        f"- project: {args.project}",
+        f"- tags: {', '.join(args.tag) if args.tag else 'none'}",
         f"- commit: {args.artifact_commit or 'pending'}",
         f"- files: {files}",
         f"- privacy: {args.privacy}",
@@ -107,6 +117,7 @@ def append_memory(args: argparse.Namespace, repo: Path) -> None:
             repo / "ai-memory" / "decisions.md",
             f"## {args.date} - {args.title}\n\n"
             f"Context: {args.goal or 'Not specified.'}\n"
+            f"Project: {args.project}\n"
             f"Decision: {'; '.join(args.memory_decision)}\n"
             f"Evidence: remote worklog entry `{args.date} - {args.title}`.\n\n",
         )
@@ -115,6 +126,7 @@ def append_memory(args: argparse.Namespace, repo: Path) -> None:
             repo / "ai-memory" / "pitfalls.md",
             f"## {args.date} - {args.title}\n\n"
             f"Symptom: {'; '.join(args.memory_pitfall)}\n"
+            f"Project: {args.project}\n"
             "Cause: Not specified.\n"
             "Fix: See linked worklog entry.\n"
             f"Evidence: remote worklog entry `{args.date} - {args.title}`.\n\n",
@@ -151,6 +163,8 @@ def main() -> int:
     parser.add_argument("--next", action="append", default=[])
     parser.add_argument("--file", action="append", default=[])
     parser.add_argument("--artifact-commit", default="")
+    parser.add_argument("--project", default="", help="Project slug for filtering future memory bootstrap")
+    parser.add_argument("--tag", action="append", default=[], help="Optional tag for retrieval")
     parser.add_argument("--privacy", choices=["public", "project"], default="public")
     parser.add_argument("--date", default=today)
     parser.add_argument("--memory-decision", action="append", default=[])
@@ -162,6 +176,9 @@ def main() -> int:
         help="Skip pre-push scan. Use only after manual review.",
     )
     args = parser.parse_args()
+    if not args.project:
+        args.project = "global"
+    args.project = slugify(args.project)
 
     with tempfile.TemporaryDirectory(prefix="ai-worklog-publish-") as tmp:
         repo = Path(tmp) / "repo"

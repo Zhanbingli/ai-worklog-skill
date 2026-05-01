@@ -24,12 +24,17 @@ Do not justify this workflow using broad claims about "literate vs oral" culture
 
 ## Workflow
 
-1. If the project has no worklog structure, initialize it:
+1. At the start of a new session, load only relevant remote memory for the current project:
+   ```bash
+   python ~/.codex/skills/ai-worklog/scripts/bootstrap_memory.py --repo .
+   ```
+   Use `--project PROJECT_SLUG` when the current directory name is not the right project key. Use `--include-global` only when the user wants legacy or cross-project context.
+2. If the project has no worklog structure, initialize it:
    ```bash
    python ~/.codex/skills/ai-worklog/scripts/init_project.py --repo .
    ```
-2. Identify the audience: self, public readers, future agent, or audit/debug.
-3. Inspect the current repo state before writing records:
+3. Identify the audience: self, public readers, future agent, or audit/debug.
+4. Inspect the current repo state before writing records:
    ```bash
    python ~/.codex/skills/ai-worklog/scripts/collect_git_context.py --repo .
    ```
@@ -37,19 +42,20 @@ Do not justify this workflow using broad claims about "literate vs oral" culture
    ```bash
    python ~/.codex/skills/ai-worklog/scripts/draft_from_git.py --repo .
    ```
-4. Write or update the smallest useful record:
+5. Write or update the smallest useful record:
    - Use `ai-log/YYYY-MM.md` for completed task summaries.
    - Use `ai-memory/decisions.md` for durable decisions.
    - Use `ai-memory/pitfalls.md` for failure modes and fixes.
    - Use `ai-memory/prompts.md` only for reusable prompt patterns, not private transcripts.
-5. Link records to commits when available. If no commit exists yet, reference changed files and say `commit: pending`.
-6. Keep raw conversation and full prompt transcripts out of git unless the user explicitly asks for audit logging. If raw logs are needed, prefer `.ai-raw/` and add it to `.gitignore`.
-7. After editing records, show the user what was added and mention any missing commit/test context.
+6. Always include `project` and useful `tags` when writing or publishing records. This is the retrieval key that prevents future sessions from reading unrelated logs.
+7. Link records to commits when available. If no commit exists yet, reference changed files and say `commit: pending`.
+8. Keep raw conversation and full prompt transcripts out of git unless the user explicitly asks for audit logging. If raw logs are needed, prefer `.ai-raw/` and add it to `.gitignore`.
+9. After editing records, show the user what was added and mention any missing commit/test context.
 
 For this user's remote-only worklog, publish directly to the default GitHub repository and do not keep a local worklog checkout:
 
 ```bash
-python ~/.codex/skills/ai-worklog/scripts/publish_worklog.py --title "Short task title" --goal "One-sentence goal" --changed "Concrete result"
+python ~/.codex/skills/ai-worklog/scripts/publish_worklog.py --project "project-slug" --title "Short task title" --goal "One-sentence goal" --changed "Concrete result"
 ```
 
 This script clones the worklog repository into a temporary directory, writes sanitized records, pushes the commit, and removes the temporary directory. Never use it for raw transcripts, secrets, private data, or audit logs.
@@ -107,6 +113,7 @@ For field templates and examples, read `references/log-format.md`.
 ## Resources
 
 - `scripts/collect_git_context.py`: collect branch, commit, status, diff stats, and changed files.
+- `scripts/bootstrap_memory.py`: temporarily clone the remote worklog, filter entries by project, and print compact startup context.
 - `scripts/init_project.py`: create `ai-log/`, `ai-memory/`, starter memory files, and `.ai-raw/` ignore rules.
 - `scripts/append_worklog.py`: append a standard entry to `ai-log/YYYY-MM.md`.
 - `scripts/draft_from_git.py`: generate a draft entry from git context for Codex to rewrite.

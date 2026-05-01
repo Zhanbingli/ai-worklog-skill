@@ -23,6 +23,8 @@ Changed:
 - Concrete result.
 
 Artifacts:
+- project: stable-project-slug
+- tags: tag, tag
 - commit: short-sha or pending
 - files: path, path
 - privacy: public, project, or private
@@ -45,6 +47,7 @@ File: `ai-memory/decisions.md`
 ## YYYY-MM-DD - Decision title
 
 Context: what forced the decision.
+Project: stable-project-slug
 Decision: what was chosen.
 Rejected: serious alternatives and why they were rejected.
 Implication: what future agents should preserve or revisit.
@@ -57,6 +60,7 @@ File: `ai-memory/pitfalls.md`
 ## YYYY-MM-DD - Pitfall title
 
 Symptom: what went wrong.
+Project: stable-project-slug
 Cause: known cause or assumption.
 Fix: what worked.
 Avoid: what future agents should not repeat.
@@ -120,7 +124,7 @@ The script creates `ai-log/YYYY-MM.md` when missing, marks the commit as `pendin
 
 ## Remote Publishing
 
-Use `scripts/publish_worklog.py` when records should go straight to a GitHub worklog repository without leaving a local worklog checkout.
+Use `scripts/publish_worklog.py` when records should go straight to a GitHub worklog repository without leaving a local worklog checkout. Always pass `--project` unless the record is intentionally global.
 
 Default remote for this installation:
 
@@ -131,13 +135,13 @@ https://github.com/Zhanbingli/ai-worklog.git
 Example:
 
 ```bash
-python scripts/publish_worklog.py --title "Task title" --goal "One-sentence goal" --changed "Concrete result"
+python scripts/publish_worklog.py --project "project-slug" --title "Task title" --goal "One-sentence goal" --changed "Concrete result"
 ```
 
 For other users, create a GitHub repository first and pass it explicitly:
 
 ```bash
-python scripts/publish_worklog.py --remote "https://github.com/<user>/ai-worklog.git" --title "Task title" --goal "One-sentence goal" --changed "Concrete result"
+python scripts/publish_worklog.py --remote "https://github.com/<user>/ai-worklog.git" --project "project-slug" --title "Task title" --goal "One-sentence goal" --changed "Concrete result"
 ```
 
 The script uses a temporary clone, commits only `.gitignore`, `README.md`, `ai-log/`, and `ai-memory/`, pushes, and cleans the temporary directory.
@@ -153,6 +157,22 @@ python scripts/draft_from_git.py --repo . --title "Task title" --goal "One-sente
 ```
 
 Codex should rewrite the `Changed`, `Decision`, and `Pitfall` sections from the git context and user-provided task history before publishing.
+
+## Remote Memory Bootstrap
+
+Use `scripts/bootstrap_memory.py` at the start of a new session to load compact background for only the current project:
+
+```bash
+python scripts/bootstrap_memory.py --repo .
+```
+
+Project matching uses `project:` fields in `ai-log` entries and `Project:` fields in `ai-memory` sections. If a project uses a different name than the repo directory, pass it explicitly:
+
+```bash
+python scripts/bootstrap_memory.py --project "project-slug"
+```
+
+Use `--max-log-entries`, `--max-memory-sections`, and `--max-chars` to control token budget. Use `--include-global` only when legacy unscoped records are needed.
 
 ## Secret Scan
 

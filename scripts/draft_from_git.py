@@ -5,6 +5,7 @@ from __future__ import annotations
 
 import argparse
 import datetime as dt
+import re
 import subprocess
 import sys
 from pathlib import Path
@@ -46,6 +47,13 @@ def bullet(items: list[str], fallback: str = "Not specified.") -> str:
     return "\n".join(f"- {item}" for item in values)
 
 
+def slugify(value: str) -> str:
+    value = value.strip().lower()
+    value = re.sub(r"[^a-z0-9._/-]+", "-", value)
+    value = re.sub(r"-+", "-", value).strip("-")
+    return value or "unknown"
+
+
 def main() -> int:
     today = dt.date.today().isoformat()
     parser = argparse.ArgumentParser(description=__doc__)
@@ -53,10 +61,12 @@ def main() -> int:
     parser.add_argument("--since", default="HEAD~1", help="Ref/date for commit context")
     parser.add_argument("--title", default="Draft task title")
     parser.add_argument("--goal", default="Draft one-sentence goal.")
+    parser.add_argument("--project", default="", help="Project slug for future filtering")
     parser.add_argument("--privacy", choices=["public", "project", "private"], default="project")
     args = parser.parse_args()
 
     repo = git_root(Path(args.repo).resolve())
+    project = slugify(args.project or repo.name)
     branch = run_git(repo, "branch", "--show-current") or "detached"
     head = run_git(repo, "log", "-1", "--pretty=format:%h %s")
     status = run_git(repo, "status", "--short")
@@ -88,6 +98,8 @@ def main() -> int:
     print("- TODO: rewrite from git context below.")
     print()
     print("Artifacts:")
+    print(f"- project: {project}")
+    print("- tags: none")
     print(f"- commit: {head.split(' ', 1)[0] if head and not status else 'pending'}")
     print(f"- files: {', '.join(files) if files else 'none'}")
     print(f"- privacy: {args.privacy}")
