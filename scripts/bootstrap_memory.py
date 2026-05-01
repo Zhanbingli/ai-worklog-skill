@@ -4,36 +4,17 @@
 from __future__ import annotations
 
 import argparse
+import json
 import os
 import re
 import subprocess
 import tempfile
 from pathlib import Path
 
+from ai_worklog.common import default_branch, run, slugify
+
 
 DEFAULT_REMOTE = "https://github.com/Zhanbingli/ai-worklog.git"
-
-
-def run(cmd: list[str], cwd: Path | None = None, check: bool = True) -> str:
-    proc = subprocess.run(
-        cmd,
-        cwd=str(cwd) if cwd else None,
-        text=True,
-        stdout=subprocess.PIPE,
-        stderr=subprocess.PIPE,
-        check=False,
-    )
-    if check and proc.returncode != 0:
-        detail = proc.stderr.strip() or proc.stdout.strip()
-        raise SystemExit(f"Command failed: {' '.join(cmd)}\n{detail}")
-    return proc.stdout.strip()
-
-
-def slugify(value: str) -> str:
-    value = value.strip().lower()
-    value = re.sub(r"[^a-z0-9._/-]+", "-", value)
-    value = re.sub(r"-+", "-", value).strip("-")
-    return value or "unknown"
 
 
 def infer_project(repo: Path) -> str:
@@ -96,7 +77,7 @@ def sparse_clone(remote: str, branch: str, target: Path, project: str, include_l
             str(target),
         ]
     )
-    paths = [f"ai-log/{project}", f"ai-memory/{project}"]
+    paths = [f"ai-index/{project}.json", f"ai-log/{project}", f"ai-memory/{project}"]
     if include_legacy:
         paths.extend(["ai-log/*.md", "ai-memory/*.md"])
     run(["git", "sparse-checkout", "init", "--no-cone"], cwd=target)
@@ -139,10 +120,42 @@ def read_matching_logs(repo: Path, project: str, include_legacy: bool, max_entri
     return entries
 
 
+def read_index(repo: Path, project: str) -> dict[str, object]:
+    path = repo / "ai-index" / f"{project}.json"
+    if not path.exists():
+        return {}
+    return json.loads(path.read_text(encoding="utf-8"))
+
+
+def render_index(data: dict[str, object]) -> list[str]:
+    if not data:
+        return []
+    parts = ["## Compact Project Index", ""]
+    latest = data.get("latest_entries", [])
+    if isinstance(latest, list) and latest:
+        parts.extend(["### Latest Entries", ""])
+        for item in latest[:10]:
+            if isinstance(item, dict):
+                parts.append(
+                    f"- {item.get('date', '')}: {item.get('title', '')} "
+                    f"({item.get('commit', 'pending')}) - {item.get('summary', '')}"
+                )
+        parts.append("")
+    for key, title in [("decisions", "Recent Decisions"), ("pitfalls", "Recent Pitfalls")]:
+        values = data.get(key, [])
+        if isinstance(values, list) and values:
+            parts.extend([f"### {title}", ""])
+            for item in values[:10]:
+                if isinstance(item, dict):
+                    parts.append(f"- {item.get('date', '')}: {item.get('text', '')}")
+            parts.append("")
+    return parts
+
+
 def main() -> int:
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--remote", default=os.environ.get("AI_WORKLOG_REMOTE", DEFAULT_REMOTE))
-    parser.add_argument("--branch", default="main")
+    parser.add_argument("--branch", default="", help="Remote branch. Defaults to remote HEAD, then main.")
     parser.add_argument("--repo", default=".", help="Current project repo used to infer project slug")
     parser.add_argument("--project", default="", help="Project slug. Defaults to current repo name/remote")
     parser.add_argument(
@@ -156,9 +169,11 @@ def main() -> int:
     args = parser.parse_args()
 
     project = slugify(args.project) if args.project else infer_project(Path(args.repo).resolve())
+    branch = args.branch or default_branch(args.remote)
     with tempfile.TemporaryDirectory(prefix="ai-worklog-bootstrap-") as tmp:
         clone = Path(tmp) / "repo"
-        sparse_clone(args.remote, args.branch, clone, project, args.include_legacy)
+        sparse_clone(args.remote, branch, clone, project, args.include_legacy)
+        index = read_index(clone, project)
         memory = read_matching_memory(clone, project, args.include_legacy, args.max_memory_sections)
         logs = read_matching_logs(clone, project, args.include_legacy, args.max_log_entries)
 
@@ -170,6 +185,7 @@ def main() -> int:
             "- scope: project directory only unless --include-legacy is used",
             "",
         ]
+        parts.extend(render_index(index))
         for name, sections in memory.items():
             if not sections:
                 continue

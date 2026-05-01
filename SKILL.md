@@ -11,6 +11,8 @@ Record what changed, why it changed, and what future agents should know. Keep th
 
 Default remote record repository for this installation: `https://github.com/Zhanbingli/ai-worklog.git`. For other users, ask them to create their own GitHub repository and pass it with `--remote` or set `AI_WORKLOG_REMOTE`.
 
+Published entries include YAML frontmatter and update `ai-index/<project>.json` so future sessions can bootstrap compact project memory before reading longer Markdown sections.
+
 ## Record Types
 
 Choose the smallest record that satisfies the user's goal:
@@ -107,6 +109,8 @@ ai-memory/
     decisions.md
     pitfalls.md
     prompts.md
+ai-index/
+  project-slug.json
 .ai-raw/        # private, gitignored, only when audit logging is requested
 ```
 

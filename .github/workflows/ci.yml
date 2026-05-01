@@ -52,6 +52,12 @@ jobs:
           git clone "$tmp/remote.git" "$tmp/check"
           git -C "$tmp/check" checkout main
           test -f "$tmp/check/ai-log/ci-project/$(date +%Y-%m).md"
+          test -f "$tmp/check/ai-index/ci-project.json"
+          grep "^---" "$tmp/check/ai-log/ci-project/$(date +%Y-%m).md"
           python scripts/bootstrap_memory.py --remote "$tmp/remote.git" --project "ci-project" > "$tmp/bootstrap.md"
+          grep "Compact Project Index" "$tmp/bootstrap.md"
           grep "CI publish" "$tmp/bootstrap.md"
           ! grep "Other publish" "$tmp/bootstrap.md"
+          mkdir -p "$tmp/leak/ai-log/demo"
+          printf 'token=abcdefghijklmnopqrstuvwxyz\n' > "$tmp/leak/ai-log/demo/test.md"
+          ! python scripts/scan_secrets.py --repo "$tmp/leak"

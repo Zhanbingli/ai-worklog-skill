@@ -76,6 +76,8 @@ python ~/.codex/skills/ai-worklog/scripts/bootstrap_memory.py --repo .
 
 Records are stored under `ai-log/<project>/` and `ai-memory/<project>/`, so publish with stable project slugs and tags. Bootstrap uses sparse checkout to fetch only those project paths. Use `--max-chars`, `--max-log-entries`, and `--max-memory-sections` to keep startup context small.
 
+Publishing also maintains `ai-index/<project>.json`, a compact machine-readable summary that bootstrap reads first to reduce token use.
+
 For project-level startup behavior, add this to that project's `AGENTS.md`:
 
 ```md
@@ -138,4 +140,5 @@ Privacy defaults:
 - `scripts/publish_worklog.py`: publish a sanitized entry to a remote worklog repo using only a temporary clone.
 - `scripts/scan_secrets.py`: scan worklog files for obvious secrets, tokens, private key markers, and raw transcript markers.
 - `scripts/weekly_context.py`: collect context for weekly reviews.
+- `ai-index/<project>.json`: generated in worklog repositories by `publish_worklog.py` for compact retrieval.
 - `references/log-format.md`: templates for changelog, project memory, public notes, and audit records.

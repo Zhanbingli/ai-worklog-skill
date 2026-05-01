@@ -14,11 +14,18 @@ SKIP_DIRS = {".git", ".ai-raw", "__pycache__", ".venv", "node_modules"}
 TEXT_SUFFIXES = {".md", ".txt", ".yml", ".yaml", ".json", ".toml", ".gitignore", ""}
 PATTERNS = [
     ("openai_api_key", re.compile(r"\bsk-[A-Za-z0-9_-]{20,}\b")),
+    ("anthropic_api_key", re.compile(r"\bsk-ant-[A-Za-z0-9_-]{20,}\b")),
     ("github_token", re.compile(r"\bgh[pousr]_[A-Za-z0-9_]{20,}\b")),
+    ("slack_token", re.compile(r"\bxox[baprs]-[A-Za-z0-9-]{20,}\b")),
+    ("google_api_key", re.compile(r"\bAIza[0-9A-Za-z_-]{35}\b")),
+    ("azure_key", re.compile(r"(?i)\bazure[_-]?(api[_-]?)?key\s*[:=]\s*['\"]?[A-Za-z0-9+/=]{20,}")),
+    ("jwt", re.compile(r"\beyJ[A-Za-z0-9_-]{10,}\.[A-Za-z0-9_-]{10,}\.[A-Za-z0-9_-]{10,}\b")),
     ("private_key", re.compile(r"-----BEGIN (?:RSA |DSA |EC |OPENSSH |PGP )?PRIVATE KEY-----")),
     ("aws_access_key", re.compile(r"\bAKIA[0-9A-Z]{16}\b")),
-    ("assignment_secret", re.compile(r"(?i)\b(password|passwd|pwd|token|secret|api[_-]?key)\s*[:=]\s*['\"]?[^'\"\s]{8,}")),
+    ("aws_secret_key", re.compile(r"(?i)\baws(.{0,20})?(secret|private).{0,20}\s*[:=]\s*['\"]?[A-Za-z0-9/+=]{30,}")),
+    ("assignment_secret", re.compile(r"(?i)\b(password|passwd|pwd|token|secret|api[_-]?key|client[_-]?secret)\s*[:=]\s*['\"]?[^'\"\s]{8,}")),
     ("env_file_reference", re.compile(r"(^|/)\.env(\.|$|/)")),
+    ("email_address", re.compile(r"\b[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\.[A-Za-z]{2,}\b")),
     ("raw_transcript_marker", re.compile(r"(?i)^\s*(raw transcript|full transcript|verbatim prompt|完整 prompt|原始对话)\s*:")),
 ]
 

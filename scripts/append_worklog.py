@@ -5,10 +5,11 @@ from __future__ import annotations
 
 import argparse
 import datetime as dt
-import re
 import subprocess
 import sys
 from pathlib import Path
+
+from ai_worklog.common import entry_id, frontmatter, slugify
 
 
 def run_git(repo: Path, *args: str) -> str:
@@ -62,18 +63,24 @@ def bullet_lines(items: list[str], fallback: str = "Not specified.") -> str:
     return "\n".join(f"- {item}" for item in values)
 
 
-def slugify(value: str) -> str:
-    value = value.strip().lower()
-    value = re.sub(r"[^a-z0-9._/-]+", "-", value)
-    value = re.sub(r"-+", "-", value).strip("-")
-    return value or "unknown"
-
-
 def build_entry(args: argparse.Namespace, repo: Path) -> str:
     files = args.file or changed_files(repo)
     commit = args.commit or current_commit(repo)
+    meta = frontmatter(
+        {
+            "id": entry_id(args.date, args.project, args.title, commit),
+            "date": args.date,
+            "project": args.project,
+            "tags": args.tag,
+            "privacy": args.privacy,
+            "commit": commit,
+            "files": files,
+        }
+    )
 
     lines = [
+        meta,
+        "",
         f"## {args.date} - {args.title}",
         "",
         f"Goal: {args.goal or 'Not specified.'}",

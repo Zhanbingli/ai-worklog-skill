@@ -9,32 +9,18 @@ from __future__ import annotations
 
 import argparse
 import datetime as dt
+import json
 import os
-import re
 import subprocess
 import sys
 import tempfile
 from pathlib import Path
 
 import scan_secrets
+from ai_worklog.common import default_branch, entry_id, frontmatter, run, slugify
 
 
 DEFAULT_REMOTE = "https://github.com/Zhanbingli/ai-worklog.git"
-
-
-def run(cmd: list[str], cwd: Path | None = None, check: bool = True) -> str:
-    proc = subprocess.run(
-        cmd,
-        cwd=str(cwd) if cwd else None,
-        text=True,
-        stdout=subprocess.PIPE,
-        stderr=subprocess.PIPE,
-        check=False,
-    )
-    if check and proc.returncode != 0:
-        detail = proc.stderr.strip() or proc.stdout.strip()
-        raise SystemExit(f"Command failed: {' '.join(cmd)}\n{detail}")
-    return proc.stdout.strip()
 
 
 def bullet_lines(items: list[str], fallback: str = "Not specified.") -> str:
@@ -42,13 +28,6 @@ def bullet_lines(items: list[str], fallback: str = "Not specified.") -> str:
     if not values:
         values = [fallback]
     return "\n".join(f"- {item}" for item in values)
-
-
-def slugify(value: str) -> str:
-    value = value.strip().lower()
-    value = re.sub(r"[^a-z0-9._/-]+", "-", value)
-    value = re.sub(r"-+", "-", value).strip("-")
-    return value or "unknown"
 
 
 def append(path: Path, text: str) -> None:
@@ -64,6 +43,7 @@ def ensure_base(repo: Path, project: str) -> None:
     (repo / "ai-memory").mkdir(parents=True, exist_ok=True)
     (repo / "ai-log" / project).mkdir(parents=True, exist_ok=True)
     (repo / "ai-memory" / project).mkdir(parents=True, exist_ok=True)
+    (repo / "ai-index").mkdir(parents=True, exist_ok=True)
     gitignore = repo / ".gitignore"
     existing = gitignore.read_text(encoding="utf-8") if gitignore.exists() else ""
     if ".ai-raw/" not in existing.splitlines():
@@ -89,7 +69,21 @@ def ensure_base(repo: Path, project: str) -> None:
 
 def build_log_entry(args: argparse.Namespace) -> str:
     files = ", ".join(args.file) if args.file else "none"
+    commit = args.artifact_commit or "pending"
+    meta = frontmatter(
+        {
+            "id": entry_id(args.date, args.project, args.title, commit),
+            "date": args.date,
+            "project": args.project,
+            "tags": args.tag,
+            "privacy": args.privacy,
+            "commit": commit,
+            "files": args.file,
+        }
+    )
     lines = [
+        meta,
+        "",
         f"## {args.date} - {args.title}",
         "",
         f"Goal: {args.goal or 'Not specified.'}",
@@ -100,7 +94,7 @@ def build_log_entry(args: argparse.Namespace) -> str:
         "Artifacts:",
         f"- project: {args.project}",
         f"- tags: {', '.join(args.tag) if args.tag else 'none'}",
-        f"- commit: {args.artifact_commit or 'pending'}",
+        f"- commit: {commit}",
         f"- files: {files}",
         f"- privacy: {args.privacy}",
     ]
@@ -111,6 +105,39 @@ def build_log_entry(args: argparse.Namespace) -> str:
     if args.next:
         lines.extend(["", "Next:", bullet_lines(args.next)])
     return "\n".join(lines) + "\n\n"
+
+
+def update_index(args: argparse.Namespace, repo: Path) -> None:
+    path = repo / "ai-index" / f"{args.project}.json"
+    if path.exists():
+        data = json.loads(path.read_text(encoding="utf-8"))
+    else:
+        data = {"project": args.project, "latest_entries": [], "decisions": [], "pitfalls": []}
+
+    commit = args.artifact_commit or "pending"
+    item = {
+        "id": entry_id(args.date, args.project, args.title, commit),
+        "date": args.date,
+        "title": args.title,
+        "project": args.project,
+        "tags": args.tag,
+        "privacy": args.privacy,
+        "commit": commit,
+        "files": args.file,
+        "summary": args.goal,
+    }
+    latest = [item]
+    for existing in data.get("latest_entries", []):
+        if isinstance(existing, dict) and existing.get("id") != item["id"]:
+            latest.append(existing)
+    data["latest_entries"] = latest[:20]
+
+    for key, values in [("decisions", args.memory_decision), ("pitfalls", args.memory_pitfall)]:
+        existing = data.get(key, [])
+        additions = [{"date": args.date, "title": args.title, "text": value} for value in values]
+        data[key] = (additions + existing)[:50] if isinstance(existing, list) else additions
+
+    path.write_text(json.dumps(data, ensure_ascii=False, indent=2) + "\n", encoding="utf-8")
 
 
 def append_memory(args: argparse.Namespace, repo: Path) -> None:
@@ -180,6 +207,7 @@ def sparse_clone_or_init(remote: str, branch: str, target: Path, project: str) -
                 ".gitignore",
                 f"ai-log/{project}",
                 f"ai-memory/{project}",
+                f"ai-index/{project}.json",
             ],
             cwd=target,
         )
@@ -196,7 +224,7 @@ def main() -> int:
     today = dt.date.today().isoformat()
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--remote", default=os.environ.get("AI_WORKLOG_REMOTE", DEFAULT_REMOTE))
-    parser.add_argument("--branch", default="main")
+    parser.add_argument("--branch", default="", help="Remote branch. Defaults to remote HEAD, then main.")
     parser.add_argument("--title", required=True)
     parser.add_argument("--goal", default="")
     parser.add_argument("--changed", action="append", default=[])
@@ -221,6 +249,7 @@ def main() -> int:
     if not args.project:
         args.project = "global"
     args.project = slugify(args.project)
+    args.branch = args.branch or default_branch(args.remote)
 
     with tempfile.TemporaryDirectory(prefix="ai-worklog-publish-") as tmp:
         repo = Path(tmp) / "repo"
@@ -232,8 +261,9 @@ def main() -> int:
             log_path.write_text(f"# {month} AI Worklog - {args.project}\n\n", encoding="utf-8")
         append(log_path, build_log_entry(args))
         append_memory(args, repo)
+        update_index(args, repo)
         if not args.skip_scan:
-            scan_result = scan_secrets.main_with_args(repo, ["README.md", "ai-log", "ai-memory"])
+            scan_result = scan_secrets.main_with_args(repo, ["README.md", "ai-log", "ai-memory", "ai-index"])
             if scan_result != 0:
                 raise SystemExit("Refusing to publish until scan findings are removed.")
 
@@ -245,6 +275,7 @@ def main() -> int:
                 "README.md",
                 f"ai-log/{args.project}",
                 f"ai-memory/{args.project}",
+                f"ai-index/{args.project}.json",
             ],
             cwd=repo,
         )
@@ -253,7 +284,18 @@ def main() -> int:
             return 0
         message = args.message or f"Add AI worklog entry for {args.date}"
         run(["git", "commit", "-m", message], cwd=repo)
-        run(["git", "push", "-u", "origin", args.branch], cwd=repo)
+        push = subprocess.run(
+            ["git", "push", "-u", "origin", args.branch],
+            cwd=str(repo),
+            text=True,
+            stdout=subprocess.PIPE,
+            stderr=subprocess.PIPE,
+            check=False,
+        )
+        if push.returncode != 0 and "fetch first" in push.stderr.lower():
+            raise SystemExit("Push rejected because the remote moved. Re-run the command to publish against a fresh clone.")
+        if push.returncode != 0:
+            raise SystemExit(push.stderr.strip() or push.stdout.strip())
         print(f"Published worklog entry to {args.remote}")
     return 0
 

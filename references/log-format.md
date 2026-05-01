@@ -14,6 +14,16 @@ Use these schemas as defaults. Create only the sections that help future retriev
 File: `ai-log/<project>/YYYY-MM.md`
 
 ```md
+---
+id: "YYYY-MM-DD-project-short-title-hash"
+date: "YYYY-MM-DD"
+project: "stable-project-slug"
+tags: ["tag", "tag"]
+privacy: "public"
+commit: "short-sha or pending"
+files: ["path", "path"]
+---
+
 ## YYYY-MM-DD - Short task title
 
 Goal: one sentence.
@@ -144,9 +154,11 @@ For other users, create a GitHub repository first and pass it explicitly:
 python scripts/publish_worklog.py --remote "https://github.com/<user>/ai-worklog.git" --project "project-slug" --title "Task title" --goal "One-sentence goal" --changed "Concrete result"
 ```
 
-The script uses a temporary sparse clone, checks out only `.gitignore`, `README.md`, `ai-log/<project>/`, and `ai-memory/<project>/`, pushes, and cleans the temporary directory.
+The script uses a temporary sparse clone, checks out only `.gitignore`, `README.md`, `ai-log/<project>/`, `ai-memory/<project>/`, and `ai-index/<project>.json`, pushes, and cleans the temporary directory.
 
 Remote publishing runs `scripts/scan_secrets.py` before pushing. It blocks obvious API keys, GitHub tokens, private key blocks, assignment-style secrets such as `token=...`, `.env` references, and raw transcript markers.
+
+Publishing also updates `ai-index/<project>.json`, a compact machine-readable index with latest entries, decisions, and pitfalls. Bootstrap reads this first to reduce token use before falling back to Markdown sections.
 
 ## Git Drafting
 
@@ -173,6 +185,8 @@ python scripts/bootstrap_memory.py --project "project-slug"
 ```
 
 Use `--max-log-entries`, `--max-memory-sections`, and `--max-chars` to control token budget. Use `--include-legacy` only when old global-format records are needed.
+
+Bootstrap uses `git clone --depth 1 --filter=blob:none --no-checkout` plus sparse checkout, so it does not fetch other project directories.
 
 ## Secret Scan
 
