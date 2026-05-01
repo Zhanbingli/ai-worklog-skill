@@ -118,6 +118,30 @@ python scripts/append_worklog.py --repo . --title "Task title" --goal "One-sente
 
 The script creates `ai-log/YYYY-MM.md` when missing, marks the commit as `pending` while the repo is dirty, and fills files from the working tree or the last commit.
 
+## Remote Publishing
+
+Use `scripts/publish_worklog.py` when records should go straight to a GitHub worklog repository without leaving a local worklog checkout.
+
+Default remote for this installation:
+
+```text
+https://github.com/Zhanbingli/ai-worklog.git
+```
+
+Example:
+
+```bash
+python scripts/publish_worklog.py --title "Task title" --goal "One-sentence goal" --changed "Concrete result"
+```
+
+For other users, create a GitHub repository first and pass it explicitly:
+
+```bash
+python scripts/publish_worklog.py --remote "https://github.com/<user>/ai-worklog.git" --title "Task title" --goal "One-sentence goal" --changed "Concrete result"
+```
+
+The script uses a temporary clone, commits only `.gitignore`, `README.md`, `ai-log/`, and `ai-memory/`, pushes, and cleans the temporary directory.
+
 ## Project Initialization
 
 Use `scripts/init_project.py` once per repository:

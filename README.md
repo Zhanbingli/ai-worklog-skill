@@ -20,6 +20,42 @@ git pull
 
 ## Use
 
+### Remote worklog repository
+
+This install defaults remote publishing to:
+
+```text
+https://github.com/Zhanbingli/ai-worklog.git
+```
+
+To use the skill yourself, create a GitHub repository such as:
+
+```text
+https://github.com/<user>/ai-worklog.git
+```
+
+Then pass it with `--remote` or set:
+
+```bash
+export AI_WORKLOG_REMOTE="https://github.com/<user>/ai-worklog.git"
+```
+
+Publish a public-safe entry without keeping a local worklog checkout:
+
+```bash
+python ~/.codex/skills/ai-worklog/scripts/publish_worklog.py --title "Task title" --goal "One-sentence goal" --changed "Concrete result"
+```
+
+For another repository:
+
+```bash
+python ~/.codex/skills/ai-worklog/scripts/publish_worklog.py --remote "https://github.com/<user>/ai-worklog.git" --title "Task title" --goal "One-sentence goal" --changed "Concrete result"
+```
+
+`publish_worklog.py` uses a temporary clone, pushes the sanitized Markdown records, and removes the temporary directory when it exits. Do not use it for raw transcripts, secrets, private data, or audit logs.
+
+### Project-local records
+
 Initialize a project once:
 
 ```bash
@@ -65,5 +101,6 @@ Privacy defaults:
 - `scripts/init_project.py`: initialize a project for worklogs and private raw logs.
 - `scripts/collect_git_context.py`: collect git status, diff stats, branch, and changed files.
 - `scripts/append_worklog.py`: create and append `ai-log/YYYY-MM.md` entries.
+- `scripts/publish_worklog.py`: publish a sanitized entry to a remote worklog repo using only a temporary clone.
 - `scripts/weekly_context.py`: collect context for weekly reviews.
 - `references/log-format.md`: templates for changelog, project memory, public notes, and audit records.

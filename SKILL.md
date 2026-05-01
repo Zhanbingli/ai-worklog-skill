@@ -9,6 +9,8 @@ description: Create durable AI-assisted work records for software or writing pro
 
 Record what changed, why it changed, and what future agents should know. Keep the default output concise and useful for retrieval; preserve raw prompts only when the user explicitly asks for audit-grade logging.
 
+Default remote record repository for this installation: `https://github.com/Zhanbingli/ai-worklog.git`. For other users, ask them to create their own GitHub repository and pass it with `--remote` or set `AI_WORKLOG_REMOTE`.
+
 ## Record Types
 
 Choose the smallest record that satisfies the user's goal:
@@ -39,6 +41,20 @@ Do not justify this workflow using broad claims about "literate vs oral" culture
 5. Link records to commits when available. If no commit exists yet, reference changed files and say `commit: pending`.
 6. Keep raw conversation and full prompt transcripts out of git unless the user explicitly asks for audit logging. If raw logs are needed, prefer `.ai-raw/` and add it to `.gitignore`.
 7. After editing records, show the user what was added and mention any missing commit/test context.
+
+For this user's remote-only worklog, publish directly to the default GitHub repository and do not keep a local worklog checkout:
+
+```bash
+python ~/.codex/skills/ai-worklog/scripts/publish_worklog.py --title "Short task title" --goal "One-sentence goal" --changed "Concrete result"
+```
+
+This script clones the worklog repository into a temporary directory, writes sanitized records, pushes the commit, and removes the temporary directory. Never use it for raw transcripts, secrets, private data, or audit logs.
+
+For another user, ask them to create a repository like `https://github.com/<user>/ai-worklog.git`, then run:
+
+```bash
+python ~/.codex/skills/ai-worklog/scripts/publish_worklog.py --remote "https://github.com/<user>/ai-worklog.git" --title "Short task title" --goal "One-sentence goal" --changed "Concrete result"
+```
 
 For a standard personal changelog entry, use the append script instead of hand-editing:
 
@@ -87,6 +103,7 @@ For field templates and examples, read `references/log-format.md`.
 - `scripts/collect_git_context.py`: collect branch, commit, status, diff stats, and changed files.
 - `scripts/init_project.py`: create `ai-log/`, `ai-memory/`, starter memory files, and `.ai-raw/` ignore rules.
 - `scripts/append_worklog.py`: append a standard entry to `ai-log/YYYY-MM.md`.
+- `scripts/publish_worklog.py`: publish a sanitized entry to a remote worklog repository through a temporary clone that is cleaned automatically.
 - `scripts/weekly_context.py`: gather git commits, worktree status, and worklog entries for weekly summaries.
 - `references/log-format.md`: schemas for changelog, memory, public note, and audit records.
 
