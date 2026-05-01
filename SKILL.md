@@ -36,13 +36,26 @@ Do not justify this workflow using broad claims about "literate vs oral" culture
 5. Keep raw conversation and full prompt transcripts out of git unless the user explicitly asks for audit logging. If raw logs are needed, prefer `.ai-raw/` and add it to `.gitignore`.
 6. After editing records, show the user what was added and mention any missing commit/test context.
 
+For a standard personal changelog entry, use the append script instead of hand-editing:
+
+```bash
+python skills/ai-worklog/scripts/append_worklog.py --repo . --title "Short task title" --goal "One-sentence goal" --changed "Concrete result"
+```
+
+Adjust the script path to the installed skill location when needed, such as `~/.codex/skills/ai-worklog/scripts/append_worklog.py`.
+
 ## Writing Rules
 
 - Write for future retrieval, not for performance theater.
 - Prefer concrete nouns: files, commits, decisions, failed approaches, follow-up tasks.
 - Separate facts from interpretation. Mark uncertain context as `assumption`.
 - Keep personal changelog entries short enough to scan in one minute.
-- Do not include secrets, credentials, PHI, private user data, or long verbatim prompt transcripts in public logs.
+- Apply privacy labels before writing:
+  - `public`: safe for GitHub, portfolio, or build-in-public.
+  - `project`: safe inside the project repo but not for public storytelling.
+  - `private`: keep under `.ai-raw/` and gitignored.
+  - `never`: secrets, tokens, PHI, private account data, or long verbatim prompt transcripts.
+- Do not write `never` material into any log. Do not publish `private` material.
 - When creating build-in-public notes, rewrite as narrative and remove private operational detail.
 
 ## Default Files
@@ -64,6 +77,7 @@ For field templates and examples, read `references/log-format.md`.
 ## Resources
 
 - `scripts/collect_git_context.py`: collect branch, commit, status, diff stats, and changed files.
+- `scripts/append_worklog.py`: append a standard entry to `ai-log/YYYY-MM.md`.
 - `references/log-format.md`: schemas for changelog, memory, public note, and audit records.
 
 ## Completion Checklist

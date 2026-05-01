@@ -2,6 +2,13 @@
 
 Use these schemas as defaults. Create only the sections that help future retrieval.
 
+## Privacy Labels
+
+- `public`: safe for GitHub, portfolio, newsletter, or build-in-public.
+- `project`: safe for the project repository; avoid publishing without review.
+- `private`: keep in `.ai-raw/` or another gitignored location.
+- `never`: do not record. Includes secrets, tokens, PHI, private account data, and long verbatim prompt transcripts.
+
 ## Personal Changelog
 
 File: `ai-log/YYYY-MM.md`
@@ -99,3 +106,13 @@ Tool timeline:
 Diff links:
 Failure or question being audited:
 ```
+
+## Append Script
+
+Use `scripts/append_worklog.py` for standard personal changelog entries:
+
+```bash
+python scripts/append_worklog.py --repo . --title "Task title" --goal "One-sentence goal" --changed "Concrete result"
+```
+
+The script creates `ai-log/YYYY-MM.md` when missing, marks the commit as `pending` while the repo is dirty, and fills files from the working tree or the last commit.
