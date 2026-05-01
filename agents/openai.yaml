@@ -1,0 +1,4 @@
+interface:
+  display_name: "AI Worklog"
+  short_description: "Record AI-assisted work as reusable project memory"
+  default_prompt: "Use $ai-worklog to summarize this session into a concise changelog and project memory update."
