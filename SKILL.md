@@ -15,8 +15,8 @@ Default remote record repository for this installation: `https://github.com/Zhan
 
 Choose the smallest record that satisfies the user's goal:
 
-- **Personal changelog**: one concise entry per completed task in `ai-log/YYYY-MM.md`.
-- **Project memory**: decisions, rejected options, assumptions, and pitfalls in `ai-memory/*.md`.
+- **Personal changelog**: one concise entry per completed task in `ai-log/<project>/YYYY-MM.md`.
+- **Project memory**: decisions, rejected options, assumptions, and pitfalls in `ai-memory/<project>/*.md`.
 - **Build-in-public note**: narrative Markdown for readers, usually daily or weekly.
 - **Audit trail**: raw prompts, diffs, timestamps, and tool context. Keep private by default.
 
@@ -28,7 +28,7 @@ Do not justify this workflow using broad claims about "literate vs oral" culture
    ```bash
    python ~/.codex/skills/ai-worklog/scripts/bootstrap_memory.py --repo .
    ```
-   Use `--project PROJECT_SLUG` when the current directory name is not the right project key. Use `--include-global` only when the user wants legacy or cross-project context.
+   Use `--project PROJECT_SLUG` when the current directory name is not the right project key. Use `--include-legacy` only when the user wants old global-format records.
 2. If the project has no worklog structure, initialize it:
    ```bash
    python ~/.codex/skills/ai-worklog/scripts/init_project.py --repo .
@@ -43,10 +43,10 @@ Do not justify this workflow using broad claims about "literate vs oral" culture
    python ~/.codex/skills/ai-worklog/scripts/draft_from_git.py --repo .
    ```
 5. Write or update the smallest useful record:
-   - Use `ai-log/YYYY-MM.md` for completed task summaries.
-   - Use `ai-memory/decisions.md` for durable decisions.
-   - Use `ai-memory/pitfalls.md` for failure modes and fixes.
-   - Use `ai-memory/prompts.md` only for reusable prompt patterns, not private transcripts.
+   - Use `ai-log/<project>/YYYY-MM.md` for completed task summaries.
+   - Use `ai-memory/<project>/decisions.md` for durable decisions.
+   - Use `ai-memory/<project>/pitfalls.md` for failure modes and fixes.
+   - Use `ai-memory/<project>/prompts.md` only for reusable prompt patterns, not private transcripts.
 6. Always include `project` and useful `tags` when writing or publishing records. This is the retrieval key that prevents future sessions from reading unrelated logs.
 7. Link records to commits when available. If no commit exists yet, reference changed files and say `commit: pending`.
 8. Keep raw conversation and full prompt transcripts out of git unless the user explicitly asks for audit logging. If raw logs are needed, prefer `.ai-raw/` and add it to `.gitignore`.
@@ -100,11 +100,13 @@ Create files on demand:
 
 ```text
 ai-log/
-  YYYY-MM.md
+  project-slug/
+    YYYY-MM.md
 ai-memory/
-  decisions.md
-  pitfalls.md
-  prompts.md
+  project-slug/
+    decisions.md
+    pitfalls.md
+    prompts.md
 .ai-raw/        # private, gitignored, only when audit logging is requested
 ```
 
@@ -114,8 +116,8 @@ For field templates and examples, read `references/log-format.md`.
 
 - `scripts/collect_git_context.py`: collect branch, commit, status, diff stats, and changed files.
 - `scripts/bootstrap_memory.py`: temporarily clone the remote worklog, filter entries by project, and print compact startup context.
-- `scripts/init_project.py`: create `ai-log/`, `ai-memory/`, starter memory files, and `.ai-raw/` ignore rules.
-- `scripts/append_worklog.py`: append a standard entry to `ai-log/YYYY-MM.md`.
+- `scripts/init_project.py`: create project-scoped `ai-log/`, `ai-memory/`, starter memory files, and `.ai-raw/` ignore rules.
+- `scripts/append_worklog.py`: append a standard entry to `ai-log/<project>/YYYY-MM.md`.
 - `scripts/draft_from_git.py`: generate a draft entry from git context for Codex to rewrite.
 - `scripts/publish_worklog.py`: publish a sanitized entry to a remote worklog repository through a temporary clone that is cleaned automatically.
 - `scripts/scan_secrets.py`: scan records for obvious secrets and raw transcript markers before publication.

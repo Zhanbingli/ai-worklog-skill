@@ -81,26 +81,58 @@ def trim_text(text: str, max_chars: int) -> str:
     return text[: max_chars - 80].rstrip() + "\n\n[trimmed to fit context budget]"
 
 
-def read_matching_memory(repo: Path, project: str, include_global: bool, max_sections: int) -> dict[str, list[str]]:
+def sparse_clone(remote: str, branch: str, target: Path, project: str, include_legacy: bool) -> None:
+    run(
+        [
+            "git",
+            "clone",
+            "--depth",
+            "1",
+            "--filter=blob:none",
+            "--no-checkout",
+            "--branch",
+            branch,
+            remote,
+            str(target),
+        ]
+    )
+    paths = [f"ai-log/{project}", f"ai-memory/{project}"]
+    if include_legacy:
+        paths.extend(["ai-log/*.md", "ai-memory/*.md"])
+    run(["git", "sparse-checkout", "init", "--no-cone"], cwd=target)
+    run(["git", "sparse-checkout", "set", *paths], cwd=target)
+    run(["git", "checkout", branch], cwd=target)
+
+
+def read_matching_memory(repo: Path, project: str, include_legacy: bool, max_sections: int) -> dict[str, list[str]]:
     results: dict[str, list[str]] = {}
     for name in ["decisions.md", "pitfalls.md", "prompts.md"]:
-        path = repo / "ai-memory" / name
-        if not path.exists():
-            continue
-        matches = [
-            section
-            for section in split_sections(path.read_text(encoding="utf-8"))
-            if section.startswith("## ") and matches_project(section, project, include_global)
-        ]
+        paths = [repo / "ai-memory" / project / name]
+        if include_legacy:
+            paths.append(repo / "ai-memory" / name)
+        matches: list[str] = []
+        for path in paths:
+            if not path.exists():
+                continue
+            for section in split_sections(path.read_text(encoding="utf-8")):
+                if not section.startswith("## "):
+                    continue
+                if path.parent.name == project or matches_project(section, project, include_legacy):
+                    matches.append(section)
         results[name] = matches[:max_sections]
     return results
 
 
-def read_matching_logs(repo: Path, project: str, include_global: bool, max_entries: int) -> list[str]:
+def read_matching_logs(repo: Path, project: str, include_legacy: bool, max_entries: int) -> list[str]:
     entries: list[str] = []
-    for path in sorted((repo / "ai-log").glob("*.md"), reverse=True):
+    paths = sorted((repo / "ai-log" / project).glob("*.md"), reverse=True)
+    if include_legacy:
+        paths.extend(sorted((repo / "ai-log").glob("*.md"), reverse=True))
+    for path in paths:
         for section in split_sections(path.read_text(encoding="utf-8")):
-            if section.startswith("## ") and matches_project(section, project, include_global):
+            if section.startswith("## ") and (
+                path.parent.name == project or matches_project(section, project, include_legacy)
+            ):
                 entries.append(section)
                 if len(entries) >= max_entries:
                     return entries
@@ -113,7 +145,11 @@ def main() -> int:
     parser.add_argument("--branch", default="main")
     parser.add_argument("--repo", default=".", help="Current project repo used to infer project slug")
     parser.add_argument("--project", default="", help="Project slug. Defaults to current repo name/remote")
-    parser.add_argument("--include-global", action="store_true", help="Include unscoped legacy entries")
+    parser.add_argument(
+        "--include-legacy",
+        action="store_true",
+        help="Also read old global ai-log/*.md and ai-memory/*.md files.",
+    )
     parser.add_argument("--max-log-entries", type=int, default=5)
     parser.add_argument("--max-memory-sections", type=int, default=5)
     parser.add_argument("--max-chars", type=int, default=12000)
@@ -122,16 +158,16 @@ def main() -> int:
     project = slugify(args.project) if args.project else infer_project(Path(args.repo).resolve())
     with tempfile.TemporaryDirectory(prefix="ai-worklog-bootstrap-") as tmp:
         clone = Path(tmp) / "repo"
-        run(["git", "clone", "--depth", "1", "--branch", args.branch, args.remote, str(clone)])
-        memory = read_matching_memory(clone, project, args.include_global, args.max_memory_sections)
-        logs = read_matching_logs(clone, project, args.include_global, args.max_log_entries)
+        sparse_clone(args.remote, args.branch, clone, project, args.include_legacy)
+        memory = read_matching_memory(clone, project, args.include_legacy, args.max_memory_sections)
+        logs = read_matching_logs(clone, project, args.include_legacy, args.max_log_entries)
 
         parts = [
             "# AI Worklog Project Memory",
             "",
             f"- project: `{project}`",
             f"- source: `{args.remote}`",
-            "- scope: matching project entries only",
+            "- scope: project directory only unless --include-legacy is used",
             "",
         ]
         for name, sections in memory.items():

@@ -74,7 +74,7 @@ Load only current-project memory at the start of a new session:
 python ~/.codex/skills/ai-worklog/scripts/bootstrap_memory.py --repo .
 ```
 
-Records are filtered by `project:`/`Project:` fields, so publish with stable project slugs and tags. Use `--max-chars`, `--max-log-entries`, and `--max-memory-sections` to keep startup context small.
+Records are stored under `ai-log/<project>/` and `ai-memory/<project>/`, so publish with stable project slugs and tags. Bootstrap uses sparse checkout to fetch only those project paths. Use `--max-chars`, `--max-log-entries`, and `--max-memory-sections` to keep startup context small.
 
 For project-level startup behavior, add this to that project's `AGENTS.md`:
 
@@ -133,7 +133,7 @@ Privacy defaults:
 - `scripts/init_project.py`: initialize a project for worklogs and private raw logs.
 - `scripts/collect_git_context.py`: collect git status, diff stats, branch, and changed files.
 - `scripts/bootstrap_memory.py`: load compact current-project memory from the remote worklog repo without keeping a local clone.
-- `scripts/append_worklog.py`: create and append `ai-log/YYYY-MM.md` entries.
+- `scripts/append_worklog.py`: create and append `ai-log/<project>/YYYY-MM.md` entries.
 - `scripts/draft_from_git.py`: generate a draft worklog entry from git status, commits, diff stats, and changed files.
 - `scripts/publish_worklog.py`: publish a sanitized entry to a remote worklog repo using only a temporary clone.
 - `scripts/scan_secrets.py`: scan worklog files for obvious secrets, tokens, private key markers, and raw transcript markers.

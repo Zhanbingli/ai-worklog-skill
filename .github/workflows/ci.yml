@@ -51,7 +51,7 @@ jobs:
           python scripts/publish_worklog.py --remote "$tmp/remote.git" --project "other-project" --title "Other publish" --goal "Verify filtering" --changed "Should not appear in ci-project bootstrap"
           git clone "$tmp/remote.git" "$tmp/check"
           git -C "$tmp/check" checkout main
-          test -f "$tmp/check/ai-log/$(date +%Y-%m).md"
+          test -f "$tmp/check/ai-log/ci-project/$(date +%Y-%m).md"
           python scripts/bootstrap_memory.py --remote "$tmp/remote.git" --project "ci-project" > "$tmp/bootstrap.md"
           grep "CI publish" "$tmp/bootstrap.md"
           ! grep "Other publish" "$tmp/bootstrap.md"

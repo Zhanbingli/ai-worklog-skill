@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Append a standard personal AI worklog entry to ai-log/YYYY-MM.md."""
+"""Append a standard personal AI worklog entry to ai-log/<project>/YYYY-MM.md."""
 
 from __future__ import annotations
 
@@ -129,7 +129,7 @@ def main() -> int:
     args.project = slugify(args.project)
     entry = build_entry(args, repo)
     month = args.date[:7]
-    path = repo / args.log_dir / f"{month}.md"
+    path = repo / args.log_dir / args.project / f"{month}.md"
 
     if args.dry_run:
         print(entry)
@@ -137,7 +137,7 @@ def main() -> int:
 
     path.parent.mkdir(parents=True, exist_ok=True)
     if not path.exists():
-        path.write_text(f"# {month} AI Worklog\n\n", encoding="utf-8")
+        path.write_text(f"# {month} AI Worklog - {args.project}\n\n", encoding="utf-8")
     with path.open("a", encoding="utf-8") as handle:
         handle.write(entry)
         handle.write("\n")

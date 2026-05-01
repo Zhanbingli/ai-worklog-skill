@@ -4,16 +4,10 @@
 from __future__ import annotations
 
 import argparse
+import re
 import subprocess
 import sys
 from pathlib import Path
-
-
-MEMORY_FILES = {
-    "decisions.md": "# AI Project Decisions\n\n",
-    "pitfalls.md": "# AI Project Pitfalls\n\n",
-    "prompts.md": "# Reusable AI Prompt Patterns\n\n",
-}
 
 
 def run_git(repo: Path, *args: str) -> str:
@@ -57,26 +51,40 @@ def write_file_once(path: Path, content: str, dry_run: bool) -> bool:
     return True
 
 
+def slugify(value: str) -> str:
+    value = value.strip().lower()
+    value = re.sub(r"[^a-z0-9._/-]+", "-", value)
+    value = re.sub(r"-+", "-", value).strip("-")
+    return value or "unknown"
+
+
 def main() -> int:
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--repo", default=".", help="Repository to initialize")
+    parser.add_argument("--project", default="", help="Project slug for log directories")
     parser.add_argument("--dry-run", action="store_true", help="Print planned changes")
     args = parser.parse_args()
 
     repo = git_root(Path(args.repo).resolve())
+    project = slugify(args.project or repo.name)
     planned: list[str] = []
 
-    for directory in ["ai-log", "ai-memory", ".ai-raw"]:
+    for directory in ["ai-log", "ai-memory", f"ai-log/{project}", f"ai-memory/{project}", ".ai-raw"]:
         path = repo / directory
         if not path.exists():
             planned.append(f"create directory: {directory}/")
             if not args.dry_run:
                 path.mkdir(parents=True, exist_ok=True)
 
-    for filename, content in MEMORY_FILES.items():
-        path = repo / "ai-memory" / filename
+    memory_files = {
+        "decisions.md": f"# AI Project Decisions - {project}\n\n",
+        "pitfalls.md": f"# AI Project Pitfalls - {project}\n\n",
+        "prompts.md": f"# Reusable AI Prompt Patterns - {project}\n\n",
+    }
+    for filename, content in memory_files.items():
+        path = repo / "ai-memory" / project / filename
         if write_file_once(path, content, args.dry_run):
-            planned.append(f"create file: ai-memory/{filename}")
+            planned.append(f"create file: ai-memory/{project}/{filename}")
 
     if ensure_gitignore_entry(repo / ".gitignore", ".ai-raw/", args.dry_run):
         planned.append("add .ai-raw/ to .gitignore")

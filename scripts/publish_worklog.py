@@ -59,9 +59,11 @@ def append(path: Path, text: str) -> None:
             handle.write("\n")
 
 
-def ensure_base(repo: Path) -> None:
+def ensure_base(repo: Path, project: str) -> None:
     (repo / "ai-log").mkdir(parents=True, exist_ok=True)
     (repo / "ai-memory").mkdir(parents=True, exist_ok=True)
+    (repo / "ai-log" / project).mkdir(parents=True, exist_ok=True)
+    (repo / "ai-memory" / project).mkdir(parents=True, exist_ok=True)
     gitignore = repo / ".gitignore"
     existing = gitignore.read_text(encoding="utf-8") if gitignore.exists() else ""
     if ".ai-raw/" not in existing.splitlines():
@@ -76,11 +78,11 @@ def ensure_base(repo: Path) -> None:
             encoding="utf-8",
         )
     for name, title in [
-        ("decisions.md", "# AI Project Decisions\n\n"),
-        ("pitfalls.md", "# AI Project Pitfalls\n\n"),
-        ("prompts.md", "# Reusable AI Prompt Patterns\n\n"),
+        ("decisions.md", f"# AI Project Decisions - {project}\n\n"),
+        ("pitfalls.md", f"# AI Project Pitfalls - {project}\n\n"),
+        ("prompts.md", f"# Reusable AI Prompt Patterns - {project}\n\n"),
     ]:
-        path = repo / "ai-memory" / name
+        path = repo / "ai-memory" / project / name
         if not path.exists():
             path.write_text(title, encoding="utf-8")
 
@@ -114,7 +116,7 @@ def build_log_entry(args: argparse.Namespace) -> str:
 def append_memory(args: argparse.Namespace, repo: Path) -> None:
     if args.memory_decision:
         append(
-            repo / "ai-memory" / "decisions.md",
+            repo / "ai-memory" / args.project / "decisions.md",
             f"## {args.date} - {args.title}\n\n"
             f"Context: {args.goal or 'Not specified.'}\n"
             f"Project: {args.project}\n"
@@ -123,7 +125,7 @@ def append_memory(args: argparse.Namespace, repo: Path) -> None:
         )
     if args.memory_pitfall:
         append(
-            repo / "ai-memory" / "pitfalls.md",
+            repo / "ai-memory" / args.project / "pitfalls.md",
             f"## {args.date} - {args.title}\n\n"
             f"Symptom: {'; '.join(args.memory_pitfall)}\n"
             f"Project: {args.project}\n"
@@ -142,6 +144,46 @@ def clone_or_init(remote: str, branch: str, target: Path) -> None:
         check=False,
     )
     if proc.returncode == 0:
+        return
+    if "Remote branch" in proc.stderr or "empty repository" in proc.stderr:
+        run(["git", "init", "-b", branch, str(target)])
+        run(["git", "remote", "add", "origin", remote], cwd=target)
+        return
+    raise SystemExit(proc.stderr.strip() or proc.stdout.strip())
+
+
+def sparse_clone_or_init(remote: str, branch: str, target: Path, project: str) -> None:
+    proc = subprocess.run(
+        [
+            "git",
+            "clone",
+            "--filter=blob:none",
+            "--no-checkout",
+            "--branch",
+            branch,
+            remote,
+            str(target),
+        ],
+        text=True,
+        stdout=subprocess.PIPE,
+        stderr=subprocess.PIPE,
+        check=False,
+    )
+    if proc.returncode == 0:
+        run(["git", "sparse-checkout", "init", "--no-cone"], cwd=target)
+        run(
+            [
+                "git",
+                "sparse-checkout",
+                "set",
+                "README.md",
+                ".gitignore",
+                f"ai-log/{project}",
+                f"ai-memory/{project}",
+            ],
+            cwd=target,
+        )
+        run(["git", "checkout", branch], cwd=target)
         return
     if "Remote branch" in proc.stderr or "empty repository" in proc.stderr:
         run(["git", "init", "-b", branch, str(target)])
@@ -182,12 +224,12 @@ def main() -> int:
 
     with tempfile.TemporaryDirectory(prefix="ai-worklog-publish-") as tmp:
         repo = Path(tmp) / "repo"
-        clone_or_init(args.remote, args.branch, repo)
-        ensure_base(repo)
+        sparse_clone_or_init(args.remote, args.branch, repo, args.project)
+        ensure_base(repo, args.project)
         month = args.date[:7]
-        log_path = repo / "ai-log" / f"{month}.md"
+        log_path = repo / "ai-log" / args.project / f"{month}.md"
         if not log_path.exists():
-            log_path.write_text(f"# {month} AI Worklog\n\n", encoding="utf-8")
+            log_path.write_text(f"# {month} AI Worklog - {args.project}\n\n", encoding="utf-8")
         append(log_path, build_log_entry(args))
         append_memory(args, repo)
         if not args.skip_scan:
@@ -195,7 +237,17 @@ def main() -> int:
             if scan_result != 0:
                 raise SystemExit("Refusing to publish until scan findings are removed.")
 
-        run(["git", "add", ".gitignore", "README.md", "ai-log", "ai-memory"], cwd=repo)
+        run(
+            [
+                "git",
+                "add",
+                ".gitignore",
+                "README.md",
+                f"ai-log/{args.project}",
+                f"ai-memory/{args.project}",
+            ],
+            cwd=repo,
+        )
         if not run(["git", "status", "--short"], cwd=repo):
             print("No worklog changes to publish.")
             return 0

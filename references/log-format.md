@@ -11,7 +11,7 @@ Use these schemas as defaults. Create only the sections that help future retriev
 
 ## Personal Changelog
 
-File: `ai-log/YYYY-MM.md`
+File: `ai-log/<project>/YYYY-MM.md`
 
 ```md
 ## YYYY-MM-DD - Short task title
@@ -41,7 +41,7 @@ Next:
 
 ## Project Memory
 
-File: `ai-memory/decisions.md`
+File: `ai-memory/<project>/decisions.md`
 
 ```md
 ## YYYY-MM-DD - Decision title
@@ -54,7 +54,7 @@ Implication: what future agents should preserve or revisit.
 Evidence: commits, files, issues, docs, or user preference.
 ```
 
-File: `ai-memory/pitfalls.md`
+File: `ai-memory/<project>/pitfalls.md`
 
 ```md
 ## YYYY-MM-DD - Pitfall title
@@ -67,7 +67,7 @@ Avoid: what future agents should not repeat.
 Evidence: commits, files, logs, or commands.
 ```
 
-File: `ai-memory/prompts.md`
+File: `ai-memory/<project>/prompts.md`
 
 ```md
 ## Prompt Pattern - Name
@@ -120,7 +120,7 @@ Use `scripts/append_worklog.py` for standard personal changelog entries:
 python scripts/append_worklog.py --repo . --title "Task title" --goal "One-sentence goal" --changed "Concrete result" --privacy project
 ```
 
-The script creates `ai-log/YYYY-MM.md` when missing, marks the commit as `pending` while the repo is dirty, and fills files from the working tree or the last commit.
+The script creates `ai-log/<project>/YYYY-MM.md` when missing, marks the commit as `pending` while the repo is dirty, and fills files from the working tree or the last commit.
 
 ## Remote Publishing
 
@@ -144,7 +144,7 @@ For other users, create a GitHub repository first and pass it explicitly:
 python scripts/publish_worklog.py --remote "https://github.com/<user>/ai-worklog.git" --project "project-slug" --title "Task title" --goal "One-sentence goal" --changed "Concrete result"
 ```
 
-The script uses a temporary clone, commits only `.gitignore`, `README.md`, `ai-log/`, and `ai-memory/`, pushes, and cleans the temporary directory.
+The script uses a temporary sparse clone, checks out only `.gitignore`, `README.md`, `ai-log/<project>/`, and `ai-memory/<project>/`, pushes, and cleans the temporary directory.
 
 Remote publishing runs `scripts/scan_secrets.py` before pushing. It blocks obvious API keys, GitHub tokens, private key blocks, assignment-style secrets such as `token=...`, `.env` references, and raw transcript markers.
 
@@ -166,13 +166,13 @@ Use `scripts/bootstrap_memory.py` at the start of a new session to load compact 
 python scripts/bootstrap_memory.py --repo .
 ```
 
-Project matching uses `project:` fields in `ai-log` entries and `Project:` fields in `ai-memory` sections. If a project uses a different name than the repo directory, pass it explicitly:
+Project matching primarily uses the project directory: `ai-log/<project>/` and `ai-memory/<project>/`. The `project:` and `Project:` fields remain as redundant metadata and for legacy fallback. If a project uses a different name than the repo directory, pass it explicitly:
 
 ```bash
 python scripts/bootstrap_memory.py --project "project-slug"
 ```
 
-Use `--max-log-entries`, `--max-memory-sections`, and `--max-chars` to control token budget. Use `--include-global` only when legacy unscoped records are needed.
+Use `--max-log-entries`, `--max-memory-sections`, and `--max-chars` to control token budget. Use `--include-legacy` only when old global-format records are needed.
 
 ## Secret Scan
 
@@ -192,7 +192,7 @@ Use `scripts/init_project.py` once per repository:
 python scripts/init_project.py --repo .
 ```
 
-It creates `ai-log/`, `ai-memory/decisions.md`, `ai-memory/pitfalls.md`, `ai-memory/prompts.md`, `.ai-raw/`, and a `.gitignore` entry for `.ai-raw/`.
+It creates `ai-log/<project>/`, `ai-memory/<project>/decisions.md`, `ai-memory/<project>/pitfalls.md`, `ai-memory/<project>/prompts.md`, `.ai-raw/`, and a `.gitignore` entry for `.ai-raw/`.
 
 ## Weekly Summary Context
 
