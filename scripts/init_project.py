@@ -63,7 +63,7 @@ def main() -> int:
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--repo", default=".", help="Repository to initialize")
     parser.add_argument("--project", default="", help="Project slug for log directories")
-    parser.add_argument("--remote", default="", help="Default remote worklog repository for .ai-worklog.json")
+    parser.add_argument("--remote", default="", help="Remote worklog repository to store in .ai-worklog.json")
     parser.add_argument("--tag", action="append", default=[], help="Default tag to write into .ai-worklog.json")
     parser.add_argument("--no-config", action="store_true", help="Do not write .ai-worklog.json")
     parser.add_argument("--dry-run", action="store_true", help="Print planned changes")

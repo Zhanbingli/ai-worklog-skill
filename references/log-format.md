@@ -134,21 +134,9 @@ The script creates `ai-log/<project>/YYYY-MM.md` when missing, marks the commit 
 
 ## Remote Publishing
 
-Use `scripts/publish_worklog.py` when records should go straight to a GitHub worklog repository without leaving a local worklog checkout. Always pass `--project` unless the record is intentionally global.
-
-Default remote for this installation:
-
-```text
-https://github.com/Zhanbingli/ai-worklog.git
-```
+Use `scripts/publish_worklog.py` when records should go straight to a GitHub worklog repository without leaving a local worklog checkout. The script has no built-in default remote; pass `--remote`, set `AI_WORKLOG_REMOTE`, or initialize `.ai-worklog.json`. Always pass `--project` unless the record is intentionally global.
 
 Example:
-
-```bash
-python scripts/publish_worklog.py --project "project-slug" --title "Task title" --goal "One-sentence goal" --changed "Concrete result"
-```
-
-For other users, create a GitHub repository first and pass it explicitly:
 
 ```bash
 python scripts/publish_worklog.py --remote "https://github.com/<user>/ai-worklog.git" --project "project-slug" --title "Task title" --goal "One-sentence goal" --changed "Concrete result"

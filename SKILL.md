@@ -9,7 +9,7 @@ description: Create durable AI-assisted work records for software or writing pro
 
 Record what changed, why it changed, and what future agents should know. Keep the default output concise and useful for retrieval; preserve raw prompts only when the user explicitly asks for audit-grade logging.
 
-Default remote record repository for this installation: `https://github.com/Zhanbingli/ai-worklog.git`. For other users, ask them to create their own GitHub repository and pass it with `--remote` or set `AI_WORKLOG_REMOTE`.
+The skill has no built-in default worklog repository. Configure a user-owned GitHub repository with `--remote`, `AI_WORKLOG_REMOTE`, or `.ai-worklog.json` before publishing or bootstrapping remote memory.
 
 Published entries include YAML frontmatter and update `ai-index/<project>.json` so future sessions can bootstrap compact project memory before reading longer Markdown sections.
 Publishing also updates `ai-summary/<project>/weekly/` and `ai-summary/<project>/monthly/` so future agents can read compact rollups before detailed logs.
@@ -60,20 +60,20 @@ Do not justify this workflow using broad claims about "literate vs oral" culture
 9. Keep raw conversation and full prompt transcripts out of git unless the user explicitly asks for audit logging. If raw logs are needed, prefer `.ai-raw/` and add it to `.gitignore`.
 10. After editing records, show the user what was added and mention any missing commit/test context.
 
-For this user's remote-only worklog, publish directly to the default GitHub repository and do not keep a local worklog checkout:
+For remote-only worklogs, publish directly to the configured GitHub repository and do not keep a local worklog checkout:
 
 ```bash
-python ~/.codex/skills/ai-worklog/scripts/publish_worklog.py --project "project-slug" --title "Short task title" --goal "One-sentence goal" --changed "Concrete result"
+python ~/.codex/skills/ai-worklog/scripts/publish_worklog.py --remote "https://github.com/<user>/ai-worklog.git" --project "project-slug" --title "Short task title" --goal "One-sentence goal" --changed "Concrete result"
 ```
 
 This script clones the worklog repository into a temporary directory, writes sanitized records, pushes the commit, and removes the temporary directory. Never use it for raw transcripts, secrets, private data, or audit logs.
 
 Remote publishing runs `scan_secrets.py` before pushing. If it finds obvious tokens, private-key markers, `.env` references, or raw transcript markers, remove them instead of bypassing the scan.
 
-For another user, ask them to create a repository like `https://github.com/<user>/ai-worklog.git`, then run:
+For repeated use, initialize the project with its own remote:
 
 ```bash
-python ~/.codex/skills/ai-worklog/scripts/publish_worklog.py --remote "https://github.com/<user>/ai-worklog.git" --title "Short task title" --goal "One-sentence goal" --changed "Concrete result"
+python ~/.codex/skills/ai-worklog/scripts/init_project.py --repo . --project "project-slug" --remote "https://github.com/<user>/ai-worklog.git"
 ```
 
 For a standard personal changelog entry, use the append script instead of hand-editing:

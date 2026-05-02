@@ -22,31 +22,19 @@ git pull
 
 ### Remote worklog repository
 
-This install defaults remote publishing to:
-
-```text
-https://github.com/Zhanbingli/ai-worklog.git
-```
-
-To use the skill yourself, create a GitHub repository such as:
+This skill does not ship with a default worklog remote. Create a GitHub repository such as:
 
 ```text
 https://github.com/<user>/ai-worklog.git
 ```
 
-Then pass it with `--remote` or set:
+Then pass it with `--remote`, set `AI_WORKLOG_REMOTE`, or save it in `.ai-worklog.json` with `init_project.py`:
 
 ```bash
 export AI_WORKLOG_REMOTE="https://github.com/<user>/ai-worklog.git"
 ```
 
 Publish a public-safe entry without keeping a local worklog checkout:
-
-```bash
-python ~/.codex/skills/ai-worklog/scripts/publish_worklog.py --project "project-slug" --title "Task title" --goal "One-sentence goal" --changed "Concrete result"
-```
-
-For another repository:
 
 ```bash
 python ~/.codex/skills/ai-worklog/scripts/publish_worklog.py --remote "https://github.com/<user>/ai-worklog.git" --project "project-slug" --title "Task title" --goal "One-sentence goal" --changed "Concrete result"
@@ -77,7 +65,7 @@ python ~/.codex/skills/ai-worklog/scripts/validate_worklog.py --repo .
 Load only current-project memory at the start of a new session:
 
 ```bash
-python ~/.codex/skills/ai-worklog/scripts/bootstrap_memory.py --repo .
+python ~/.codex/skills/ai-worklog/scripts/bootstrap_memory.py --repo . --remote "https://github.com/<user>/ai-worklog.git"
 ```
 
 Records are stored under `ai-log/<project>/` and `ai-memory/<project>/`, so publish with stable project slugs and tags. Bootstrap uses sparse checkout to fetch only those project paths. Use `--max-chars`, `--max-log-entries`, and `--max-memory-sections` to keep startup context small.

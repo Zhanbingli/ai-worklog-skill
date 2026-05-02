@@ -22,9 +22,6 @@ import validate_worklog
 from ai_worklog.common import config_list, default_branch, entry_id, frontmatter, load_config, run, slugify
 
 
-DEFAULT_REMOTE = "https://github.com/Zhanbingli/ai-worklog.git"
-
-
 def bullet_lines(items: list[str], fallback: str = "Not specified.") -> str:
     values = [item.strip() for item in items if item.strip()]
     if not values:
@@ -238,10 +235,12 @@ def sparse_clone_or_init(remote: str, branch: str, target: Path, project: str) -
 def main() -> int:
     today = dt.date.today().isoformat()
     config = load_config(Path.cwd())
+    configured_remote = os.environ.get("AI_WORKLOG_REMOTE") or str(config.get("remote") or "")
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument(
         "--remote",
-        default=os.environ.get("AI_WORKLOG_REMOTE") or str(config.get("remote") or DEFAULT_REMOTE),
+        default=configured_remote,
+        help="Git remote for the worklog repository. Defaults to AI_WORKLOG_REMOTE or .ai-worklog.json.",
     )
     parser.add_argument("--branch", default="", help="Remote branch. Defaults to remote HEAD, then main.")
     parser.add_argument("--title", required=True)
@@ -270,6 +269,11 @@ def main() -> int:
         help="Do not update weekly and monthly ai-summary files after publishing.",
     )
     args = parser.parse_args()
+    if not args.remote:
+        raise SystemExit(
+            "Missing worklog remote. Pass --remote, set AI_WORKLOG_REMOTE, "
+            "or run init_project.py with --remote to create .ai-worklog.json."
+        )
     if not args.project:
         args.project = str(config.get("project") or "global")
     args.project = slugify(args.project)

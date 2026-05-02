@@ -14,9 +14,6 @@ from pathlib import Path
 from ai_worklog.common import default_branch, load_config, run, slugify
 
 
-DEFAULT_REMOTE = "https://github.com/Zhanbingli/ai-worklog.git"
-
-
 def infer_project(repo: Path) -> str:
     if not repo.exists():
         return "unknown"
@@ -170,10 +167,12 @@ def main() -> int:
     early.add_argument("--repo", default=".")
     early_args, _ = early.parse_known_args()
     config = load_config(Path(early_args.repo).resolve())
+    configured_remote = os.environ.get("AI_WORKLOG_REMOTE") or str(config.get("remote") or "")
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument(
         "--remote",
-        default=os.environ.get("AI_WORKLOG_REMOTE") or str(config.get("remote") or DEFAULT_REMOTE),
+        default=configured_remote,
+        help="Git remote for the worklog repository. Defaults to AI_WORKLOG_REMOTE or .ai-worklog.json.",
     )
     parser.add_argument("--branch", default="", help="Remote branch. Defaults to remote HEAD, then main.")
     parser.add_argument("--repo", default=".", help="Current project repo used to infer project slug")
@@ -188,6 +187,11 @@ def main() -> int:
     parser.add_argument("--max-summary-sections", type=int, default=2)
     parser.add_argument("--max-chars", type=int, default=12000)
     args = parser.parse_args()
+    if not args.remote:
+        raise SystemExit(
+            "Missing worklog remote. Pass --remote, set AI_WORKLOG_REMOTE, "
+            "or run init_project.py with --remote to create .ai-worklog.json."
+        )
 
     project = slugify(args.project or str(config.get("project") or "")) if (args.project or config.get("project")) else infer_project(Path(args.repo).resolve())
     branch = args.branch or default_branch(args.remote)
