@@ -5,147 +5,68 @@ description: Create durable AI-assisted work records for software or writing pro
 
 # AI Worklog
 
-## Overview
+Record what changed, why it changed, and what future agents should know. Default output is concise and retrieval-friendly. Raw prompt transcripts are kept out of git unless the user explicitly asks for audit logging.
 
-Record what changed, why it changed, and what future agents should know. Keep the default output concise and useful for retrieval; preserve raw prompts only when the user explicitly asks for audit-grade logging.
+## Invocation
 
-The skill has no built-in default worklog repository. Configure a user-owned GitHub repository with `--remote`, `AI_WORKLOG_REMOTE`, or `.ai-worklog.json` before publishing or bootstrapping remote memory.
+All operations go through one CLI. `<SKILL_DIR>` is wherever this skill is installed (e.g. `~/.claude/skills/ai-worklog` or `~/.codex/skills/ai-worklog`).
 
-Published entries include YAML frontmatter and update `ai-index/<project>.json` so future sessions can bootstrap compact project memory before reading longer Markdown sections.
-Publishing also updates `ai-summary/<project>/weekly/` and `ai-summary/<project>/monthly/` so future agents can read compact rollups before detailed logs.
+```bash
+<SKILL_DIR>/scripts/ai-worklog <command> [args...]
+```
 
-## Record Types
-
-Choose the smallest record that satisfies the user's goal:
-
-- **Personal changelog**: one concise entry per completed task in `ai-log/<project>/YYYY-MM.md`.
-- **Project memory**: decisions, rejected options, assumptions, and pitfalls in `ai-memory/<project>/*.md`.
-- **Build-in-public note**: narrative Markdown for readers, usually daily or weekly.
-- **Audit trail**: raw prompts, diffs, timestamps, and tool context. Keep private by default.
-
-Do not justify this workflow using broad claims about "literate vs oral" culture. Frame the value in concrete terms: recall, public learning trace, searchable project memory, or debugging.
+Run with no arguments for the command list, or `<command> --help` for options. Subcommands: `init`, `bootstrap`, `log`, `publish`, `draft`, `git-context`, `weekly`, `summarize`, `validate`, `scan`, `migrate`.
 
 ## Workflow
 
-1. At the start of a new session, load only relevant remote memory for the current project:
+1. **First time in a repo** — initialize once. Creates `.ai-worklog.json`, `ai-log/<project>/`, `ai-memory/<project>/`, and a gitignored `.ai-raw/`:
    ```bash
-   python ~/.codex/skills/ai-worklog/scripts/bootstrap_memory.py --repo .
+   ai-worklog init --repo . --project PROJECT_SLUG --remote https://github.com/<user>/ai-worklog.git
    ```
-   Use `--project PROJECT_SLUG` when the current directory name is not the right project key. Use `--include-legacy` only when the user wants old global-format records.
-2. If the project has no worklog structure, initialize it:
+2. **Start of session** — bootstrap compact project memory from the remote worklog (sparse clone, no local checkout retained):
    ```bash
-   python ~/.codex/skills/ai-worklog/scripts/init_project.py --repo . --project PROJECT_SLUG --remote WORKLOG_REMOTE
+   ai-worklog bootstrap --repo .
    ```
-   This creates `.ai-worklog.json`, so later publish/bootstrap/draft commands can infer project, remote, and default tags.
-3. Identify the audience: self, public readers, future agent, or audit/debug.
-4. Inspect the current repo state before writing records:
+3. **After a task** — append a local changelog entry, or publish straight to the remote worklog:
    ```bash
-   python ~/.codex/skills/ai-worklog/scripts/collect_git_context.py --repo .
+   ai-worklog log --title "..." --goal "..." --changed "..." --privacy project
+   ai-worklog publish --title "..." --goal "..." --changed "..."
    ```
-   For a fuller draft from git context, use:
+4. **Before committing or publishing** — validate structure and scan for secrets. Publishing runs both automatically and refuses on failure:
    ```bash
-   python ~/.codex/skills/ai-worklog/scripts/draft_from_git.py --repo .
+   ai-worklog validate --repo .
+   ai-worklog scan --repo .
    ```
-5. Write or update the smallest useful record:
-   - Use `ai-log/<project>/YYYY-MM.md` for completed task summaries.
-   - Use `ai-memory/<project>/decisions.md` for durable decisions.
-   - Use `ai-memory/<project>/pitfalls.md` for failure modes and fixes.
-   - Use `ai-memory/<project>/prompts.md` only for reusable prompt patterns, not private transcripts.
-6. Always include `project` and useful `tags` when writing or publishing records. This is the retrieval key that prevents future sessions from reading unrelated logs.
-7. Link records to commits when available. If no commit exists yet, reference changed files and say `commit: pending`.
-8. Validate local records before committing or publishing:
-   ```bash
-   python ~/.codex/skills/ai-worklog/scripts/validate_worklog.py --repo .
-   ```
-9. Keep raw conversation and full prompt transcripts out of git unless the user explicitly asks for audit logging. If raw logs are needed, prefer `.ai-raw/` and add it to `.gitignore`.
-10. After editing records, show the user what was added and mention any missing commit/test context.
 
-For remote-only worklogs, publish directly to the configured GitHub repository and do not keep a local worklog checkout:
+## Record types
 
-```bash
-python ~/.codex/skills/ai-worklog/scripts/publish_worklog.py --remote "https://github.com/<user>/ai-worklog.git" --project "project-slug" --title "Short task title" --goal "One-sentence goal" --changed "Concrete result"
-```
+Pick the smallest record that satisfies the goal:
 
-This script clones the worklog repository into a temporary directory, writes sanitized records, pushes the commit, and removes the temporary directory. Never use it for raw transcripts, secrets, private data, or audit logs.
+- **Personal changelog** — `ai-log/<project>/YYYY-MM.md`, one short entry per task.
+- **Project memory** — `ai-memory/<project>/{decisions,pitfalls,prompts}.md` for durable knowledge.
+- **Build-in-public note** — narrative Markdown for public readers; sanitize first.
+- **Audit trail** — raw prompts and tool timeline. Keep under `.ai-raw/` (gitignored) unless explicitly published.
 
-Remote publishing runs `scan_secrets.py` before pushing. If it finds obvious tokens, private-key markers, `.env` references, or raw transcript markers, remove them instead of bypassing the scan.
+Always include a stable `project` slug and useful `tags`. Link to commits when available; otherwise reference changed files and mark `commit: pending`.
 
-For repeated use, initialize the project with its own remote:
+## Privacy labels
 
-```bash
-python ~/.codex/skills/ai-worklog/scripts/init_project.py --repo . --project "project-slug" --remote "https://github.com/<user>/ai-worklog.git"
-```
+Apply one before writing:
 
-For a standard personal changelog entry, use the append script instead of hand-editing:
+- `public` — safe for GitHub, portfolio, build-in-public.
+- `project` — safe inside the project repo, not for public storytelling.
+- `private` — keep under `.ai-raw/`, gitignored.
+- `never` — secrets, tokens, PHI, private account data, or long verbatim prompt transcripts. Do not record.
 
-```bash
-python ~/.codex/skills/ai-worklog/scripts/append_worklog.py --repo . --title "Short task title" --goal "One-sentence goal" --changed "Concrete result"
-```
+Do not write `never` material into any log. Do not publish `private` material. When creating public notes, rewrite as narrative and remove operational detail.
 
-For a weekly review context, use:
+## Writing rules
 
-```bash
-python ~/.codex/skills/ai-worklog/scripts/weekly_context.py --repo . --since YYYY-MM-DD
-```
-
-## Writing Rules
-
-- Write for future retrieval, not for performance theater.
-- Prefer concrete nouns: files, commits, decisions, failed approaches, follow-up tasks.
+- Write for future retrieval, not performance theater. Concrete nouns: files, commits, decisions, failed approaches, follow-ups.
 - Separate facts from interpretation. Mark uncertain context as `assumption`.
-- Keep personal changelog entries short enough to scan in one minute.
-- Apply privacy labels before writing:
-  - `public`: safe for GitHub, portfolio, or build-in-public.
-  - `project`: safe inside the project repo but not for public storytelling.
-  - `private`: keep under `.ai-raw/` and gitignored.
-  - `never`: secrets, tokens, PHI, private account data, or long verbatim prompt transcripts.
-- Do not write `never` material into any log. Do not publish `private` material.
-- When creating build-in-public notes, rewrite as narrative and remove private operational detail.
+- Personal changelog entries should scan in under a minute.
+- After editing records, show the user what was added and call out any missing commit/test context.
 
-## Default Files
+## Reference
 
-Create files on demand:
-
-```text
-ai-log/
-  project-slug/
-    YYYY-MM.md
-ai-memory/
-  project-slug/
-    decisions.md
-    pitfalls.md
-    prompts.md
-ai-summary/
-  project-slug/
-    weekly/
-      YYYY-Www.md
-    monthly/
-      YYYY-MM.md
-ai-index/
-  project-slug.json
-.ai-raw/        # private, gitignored, only when audit logging is requested
-```
-
-For field templates and examples, read `references/log-format.md`.
-
-## Resources
-
-- `scripts/collect_git_context.py`: collect branch, commit, status, diff stats, and changed files.
-- `scripts/bootstrap_memory.py`: temporarily clone the remote worklog, filter entries by project, and print compact startup context.
-- `scripts/init_project.py`: create project-scoped `ai-log/`, `ai-memory/`, starter memory files, and `.ai-raw/` ignore rules.
-- `scripts/append_worklog.py`: append a standard entry to `ai-log/<project>/YYYY-MM.md`.
-- `scripts/draft_from_git.py`: generate a draft entry from git context for Codex to rewrite.
-- `scripts/publish_worklog.py`: publish a sanitized entry to a remote worklog repository through a temporary clone that is cleaned automatically.
-- `scripts/scan_secrets.py`: scan records for obvious secrets and raw transcript markers before publication.
-- `scripts/validate_worklog.py`: validate project-scoped log structure, required frontmatter, indexes, and memory retrieval fields.
-- `scripts/summarize_worklog.py`: generate compact weekly or monthly summaries from project-scoped logs.
-- `scripts/weekly_context.py`: gather git commits, worktree status, and worklog entries for weekly summaries.
-- `scripts/migrate_legacy_logs.py`: copy old global log and memory files into project-scoped directories.
-- `references/log-format.md`: schemas for changelog, memory, public note, and audit records.
-
-## Completion Checklist
-
-- The record says what changed and why.
-- The record names commits or changed files.
-- Durable project memory is separated from public storytelling.
-- Private raw logs are excluded from git unless explicitly requested.
+Read `references/log-format.md` for record schemas, frontmatter fields, and per-subcommand usage.

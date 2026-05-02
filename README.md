@@ -1,156 +1,120 @@
 # AI Worklog Skill
 
-Reusable Codex skill for recording AI-assisted work as concise changelogs, project memory, public learning notes, or private audit records.
+Reusable skill for recording AI-assisted work as concise changelogs, project memory, public learning notes, or private audit records. Works under both Codex (`~/.codex/skills/`) and Claude Code (`~/.claude/skills/`).
 
 ## Install
 
-Clone directly into your Codex skills directory:
+Pick your install target:
 
 ```bash
-mkdir -p ~/.codex/skills
+# Codex
 git clone https://github.com/Zhanbingli/ai-worklog-skill.git ~/.codex/skills/ai-worklog
+
+# Claude Code
+git clone https://github.com/Zhanbingli/ai-worklog-skill.git ~/.claude/skills/ai-worklog
 ```
 
-Update later with:
+Update later with `git pull` from inside that directory.
+
+For convenience, expose the CLI on your PATH:
 
 ```bash
-cd ~/.codex/skills/ai-worklog
-git pull
+ln -s "$HOME/.claude/skills/ai-worklog/scripts/ai-worklog" /usr/local/bin/ai-worklog
+# or for Codex:
+ln -s "$HOME/.codex/skills/ai-worklog/scripts/ai-worklog" /usr/local/bin/ai-worklog
 ```
 
-## Use
+The rest of this README assumes `ai-worklog` is on your PATH. If not, prefix every command with `<SKILL_DIR>/scripts/`.
 
-### Remote worklog repository
+## CLI
 
-This skill does not ship with a default worklog remote. Create a GitHub repository such as:
+One front door, eleven subcommands:
+
+```bash
+ai-worklog                  # show available commands
+ai-worklog <command> --help # per-command options
+```
+
+| Command | What it does |
+|---|---|
+| `init` | One-time project setup (`.ai-worklog.json`, `ai-log/`, `ai-memory/`, `.ai-raw/`) |
+| `bootstrap` | Sparse-clone the remote worklog and print compact project memory |
+| `log` | Append an entry to `ai-log/<project>/YYYY-MM.md` |
+| `publish` | Sanitize and push an entry to the remote worklog repo (temp clone, auto-cleaned) |
+| `draft` | Generate an entry draft from current git status, diff, and commits |
+| `git-context` | Print branch, commit, status, diff stats, changed files |
+| `weekly` | Collect git + worklog context for a weekly review |
+| `summarize` | Write weekly or monthly rollups under `ai-summary/<project>/` |
+| `validate` | Check structure, frontmatter, and indexes |
+| `scan` | Scan worklog files for obvious secrets and raw transcript markers |
+| `migrate` | Copy old global-format records into project-scoped directories |
+
+The standalone scripts under `scripts/*.py` still work directly if you prefer them, but the CLI is the documented surface.
+
+## Quick start
+
+```bash
+# 1. Create your remote worklog repo at https://github.com/<user>/ai-worklog
+export AI_WORKLOG_REMOTE="https://github.com/<user>/ai-worklog.git"
+
+# 2. Initialize the project
+ai-worklog init --repo . --project "my-project" --remote "$AI_WORKLOG_REMOTE"
+
+# 3. After an AI-assisted task, publish a sanitized entry
+ai-worklog publish \
+  --title "Task title" \
+  --goal "One-sentence goal" \
+  --changed "Concrete result"
+
+# 4. Next session, bootstrap project memory
+ai-worklog bootstrap --repo .
+```
+
+`publish` clones the remote into a temporary directory, writes only sanitized records, pushes, and removes the clone. It runs `validate` and `scan` first and refuses to push on failure. Never use it for raw transcripts, secrets, private data, or audit logs.
+
+## Project layout
+
+After `init` and at least one entry:
 
 ```text
-https://github.com/<user>/ai-worklog.git
+ai-log/<project>/YYYY-MM.md           # personal changelog entries
+ai-memory/<project>/decisions.md      # durable decisions
+ai-memory/<project>/pitfalls.md       # failure modes and fixes
+ai-memory/<project>/prompts.md        # reusable prompt patterns
+ai-summary/<project>/weekly/          # generated rollups
+ai-summary/<project>/monthly/
+ai-index/<project>.json               # compact machine-readable index
+.ai-raw/                              # private, gitignored
+.ai-worklog.json                      # project config (project, remote, default tags)
 ```
 
-Then pass it with `--remote`, set `AI_WORKLOG_REMOTE`, or save it in `.ai-worklog.json` with `init_project.py`:
+`bootstrap` reads `ai-index/<project>.json` first, then `ai-summary/<project>/`, then detailed log entries, in that order. Use `--max-chars`, `--max-log-entries`, and `--max-memory-sections` to keep startup context small.
 
-```bash
-export AI_WORKLOG_REMOTE="https://github.com/<user>/ai-worklog.git"
-```
+## Privacy labels
 
-Publish a public-safe entry without keeping a local worklog checkout:
+- `public` — safe for GitHub, portfolio, newsletter, build-in-public.
+- `project` — safe inside the project repo; review before publishing.
+- `private` — keep gitignored under `.ai-raw/`.
+- `never` — secrets, tokens, PHI, private account data, long verbatim prompt transcripts. Do not record.
 
-```bash
-python ~/.codex/skills/ai-worklog/scripts/publish_worklog.py --remote "https://github.com/<user>/ai-worklog.git" --project "project-slug" --title "Task title" --goal "One-sentence goal" --changed "Concrete result"
-```
+`publish` blocks obvious secrets (API keys, GitHub tokens, private-key markers, `.env` references, raw transcript markers) via the secret scan. Do not bypass with `--skip-scan` unless you have manually reviewed the findings.
 
-`publish_worklog.py` uses a temporary clone, pushes the sanitized Markdown records, and removes the temporary directory when it exits. Do not use it for raw transcripts, secrets, private data, or audit logs.
+## Project hookup
 
-Draft an entry from a project before publishing:
-
-```bash
-python ~/.codex/skills/ai-worklog/scripts/draft_from_git.py --repo .
-```
-
-Scan a local worklog before committing or publishing:
-
-```bash
-python ~/.codex/skills/ai-worklog/scripts/scan_secrets.py --repo .
-```
-
-Remote publishing runs this scan by default and refuses to push obvious secrets or raw transcript markers.
-
-Validate local worklog structure:
-
-```bash
-python ~/.codex/skills/ai-worklog/scripts/validate_worklog.py --repo .
-```
-
-Load only current-project memory at the start of a new session:
-
-```bash
-python ~/.codex/skills/ai-worklog/scripts/bootstrap_memory.py --repo . --remote "https://github.com/<user>/ai-worklog.git"
-```
-
-Records are stored under `ai-log/<project>/` and `ai-memory/<project>/`, so publish with stable project slugs and tags. Bootstrap uses sparse checkout to fetch only those project paths. Use `--max-chars`, `--max-log-entries`, and `--max-memory-sections` to keep startup context small.
-
-Publishing also maintains `ai-index/<project>.json`, a compact machine-readable summary that bootstrap reads first to reduce token use. It also maintains `ai-summary/<project>/weekly/` and `ai-summary/<project>/monthly/` so future agents can read rollups before detailed entries.
-
-For project-level startup behavior, add this to that project's `AGENTS.md`:
+Add this to your project's `AGENTS.md` or `CLAUDE.md` so each new session bootstraps automatically:
 
 ```md
-At the start of substantial work, use $ai-worklog and run:
+At the start of substantial work, run:
 
-python ~/.codex/skills/ai-worklog/scripts/bootstrap_memory.py --repo .
+  ai-worklog bootstrap --repo .
 
 Use only the returned project-scoped context. Do not persist the remote worklog clone locally.
 ```
 
-### Project-local records
-
-Initialize a project once:
-
-```bash
-python ~/.codex/skills/ai-worklog/scripts/init_project.py --repo . --project "project-slug" --remote "https://github.com/<user>/ai-worklog.git"
-```
-
-This writes `.ai-worklog.json` so later commands can infer the project, remote, and default tags.
-
-After an AI-assisted task, ask Codex:
-
-```text
-Use $ai-worklog to summarize this session into a concise changelog and project memory update.
-```
-
-The skill defaults to short, searchable records and keeps raw prompt transcripts private unless audit logging is explicitly requested.
-
-To append a standard changelog entry:
-
-```bash
-python ~/.codex/skills/ai-worklog/scripts/append_worklog.py --repo . --title "Task title" --goal "One-sentence goal" --changed "Concrete result" --privacy project
-```
-
-For a weekly review:
-
-```bash
-python ~/.codex/skills/ai-worklog/scripts/weekly_context.py --repo . --since 2026-04-24
-```
-
-Then ask Codex:
-
-```text
-Use $ai-worklog to turn this weekly context into a private weekly review and a sanitized build-in-public draft.
-```
-
-Generate a compact weekly or monthly rollup from project-scoped logs:
-
-```bash
-python ~/.codex/skills/ai-worklog/scripts/summarize_worklog.py --repo . --project "project-slug" --period weekly --write
-```
-
-Privacy defaults:
-
-- `public`: safe for GitHub or build-in-public.
-- `project`: safe in the project repo, not automatically public.
-- `private`: keep gitignored under `.ai-raw/`.
-- `never`: do not record secrets, tokens, PHI, private account data, or long prompt transcripts.
-
-Migrate old global files into project directories:
-
-```bash
-python ~/.codex/skills/ai-worklog/scripts/migrate_legacy_logs.py --repo /path/to/ai-worklog --default-project "project-slug"
-```
-
 ## Files
 
-- `SKILL.md`: workflow and usage rules.
-- `scripts/init_project.py`: initialize a project for worklogs and private raw logs.
-- `scripts/collect_git_context.py`: collect git status, diff stats, branch, and changed files.
-- `scripts/bootstrap_memory.py`: load compact current-project memory from the remote worklog repo without keeping a local clone.
-- `scripts/append_worklog.py`: create and append `ai-log/<project>/YYYY-MM.md` entries.
-- `scripts/draft_from_git.py`: generate a draft worklog entry from git status, commits, diff stats, and changed files.
-- `scripts/publish_worklog.py`: publish a sanitized entry to a remote worklog repo using only a temporary clone.
-- `scripts/scan_secrets.py`: scan worklog files for obvious secrets, tokens, private key markers, and raw transcript markers.
-- `scripts/validate_worklog.py`: validate project-scoped worklog structure and machine-readable indexes.
-- `scripts/summarize_worklog.py`: generate compact weekly or monthly summaries for future agent bootstrap.
-- `scripts/weekly_context.py`: collect context for weekly reviews.
-- `scripts/migrate_legacy_logs.py`: copy old `ai-log/YYYY-MM.md` and `ai-memory/*.md` sections into project directories.
-- `ai-summary/<project>/`: generated weekly and monthly rollups.
-- `ai-index/<project>.json`: generated in worklog repositories by `publish_worklog.py` for compact retrieval.
-- `references/log-format.md`: templates for changelog, project memory, public notes, and audit records.
+- `SKILL.md` — agent-facing workflow.
+- `scripts/ai-worklog` — unified CLI entry point.
+- `scripts/ai_worklog/` — shared library (`common.py`, `cli.py`).
+- `scripts/<command>.py` — implementation per subcommand.
+- `references/log-format.md` — record schemas, frontmatter fields, full per-command reference.

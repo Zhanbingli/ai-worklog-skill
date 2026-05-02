@@ -122,93 +122,17 @@ Diff links:
 Failure or question being audited:
 ```
 
-## Append Script
+## CLI Reference
 
-Use `scripts/append_worklog.py` for standard personal changelog entries:
+All operations are exposed through `<SKILL_DIR>/scripts/ai-worklog <command>`. The legacy standalone scripts under `scripts/<name>.py` still work and accept the same arguments — the CLI just dispatches to them. Pass `--help` to any subcommand for its full option list.
 
-```bash
-python scripts/append_worklog.py --repo . --title "Task title" --goal "One-sentence goal" --changed "Concrete result" --privacy project
-```
-
-The script creates `ai-log/<project>/YYYY-MM.md` when missing, marks the commit as `pending` while the repo is dirty, and fills files from the working tree or the last commit.
-
-## Remote Publishing
-
-Use `scripts/publish_worklog.py` when records should go straight to a GitHub worklog repository without leaving a local worklog checkout. The script has no built-in default remote; pass `--remote`, set `AI_WORKLOG_REMOTE`, or initialize `.ai-worklog.json`. Always pass `--project` unless the record is intentionally global.
-
-Example:
+### `init` — one-time project setup
 
 ```bash
-python scripts/publish_worklog.py --remote "https://github.com/<user>/ai-worklog.git" --project "project-slug" --title "Task title" --goal "One-sentence goal" --changed "Concrete result"
+ai-worklog init --repo . --project "project-slug" --remote "https://github.com/<user>/ai-worklog.git" --tag "tag"
 ```
 
-The script uses a temporary sparse clone, checks out only `.gitignore`, `README.md`, `ai-log/<project>/`, `ai-memory/<project>/`, and `ai-index/<project>.json`, pushes, and cleans the temporary directory.
-
-Remote publishing runs `scripts/scan_secrets.py` before pushing. It blocks obvious API keys, GitHub tokens, private key blocks, assignment-style secrets such as `token=...`, `.env` references, and raw transcript markers.
-
-Publishing also updates `ai-index/<project>.json`, a compact machine-readable index with latest entries, decisions, and pitfalls. Bootstrap reads this first to reduce token use before falling back to Markdown sections.
-
-Publishing updates weekly and monthly rollups under `ai-summary/<project>/` unless `--no-summary` is passed. Bootstrap reads these summaries before detailed log entries.
-
-## Git Drafting
-
-Use `scripts/draft_from_git.py` to create a draft from current git context:
-
-```bash
-python scripts/draft_from_git.py --repo . --title "Task title" --goal "One-sentence goal"
-```
-
-Codex should rewrite the `Changed`, `Decision`, and `Pitfall` sections from the git context and user-provided task history before publishing.
-
-## Remote Memory Bootstrap
-
-Use `scripts/bootstrap_memory.py` at the start of a new session to load compact background for only the current project:
-
-```bash
-python scripts/bootstrap_memory.py --repo .
-```
-
-Project matching primarily uses the project directory: `ai-log/<project>/` and `ai-memory/<project>/`. The `project:` and `Project:` fields remain as redundant metadata and for legacy fallback. If a project uses a different name than the repo directory, pass it explicitly:
-
-```bash
-python scripts/bootstrap_memory.py --project "project-slug"
-```
-
-Use `--max-log-entries`, `--max-memory-sections`, and `--max-chars` to control token budget. Use `--include-legacy` only when old global-format records are needed.
-
-Bootstrap uses `git clone --depth 1 --filter=blob:none --no-checkout` plus sparse checkout, so it does not fetch other project directories.
-
-## Secret Scan
-
-Use `scripts/scan_secrets.py` before committing or publishing local worklogs:
-
-```bash
-python scripts/scan_secrets.py --repo .
-```
-
-If it reports findings, remove or rewrite the flagged material. Do not publish with `--skip-scan` unless the user explicitly accepts the risk after reviewing the exact findings.
-
-## Structure Validation
-
-Use `scripts/validate_worklog.py` before committing local records:
-
-```bash
-python scripts/validate_worklog.py --repo .
-```
-
-It checks project-scoped `ai-log/<project>/YYYY-MM.md` entries for required frontmatter (`id`, `date`, `project`, `tags`, `privacy`, `commit`, `files`), required body sections (`Goal:`, `Changed:`, `Artifacts:`), project/date path consistency, memory retrieval fields, and `ai-index/<project>.json` shape.
-
-## Project Initialization
-
-Use `scripts/init_project.py` once per repository:
-
-```bash
-python scripts/init_project.py --repo . --project "project-slug" --remote "https://github.com/<user>/ai-worklog.git" --tag "tag"
-```
-
-It creates `ai-log/<project>/`, `ai-memory/<project>/decisions.md`, `ai-memory/<project>/pitfalls.md`, `ai-memory/<project>/prompts.md`, `.ai-raw/`, `.ai-worklog.json`, and a `.gitignore` entry for `.ai-raw/`.
-
-## Project Configuration
+Creates `ai-log/<project>/`, `ai-memory/<project>/{decisions,pitfalls,prompts}.md`, `.ai-raw/`, `.ai-worklog.json`, and a `.gitignore` entry for `.ai-raw/`.
 
 `.ai-worklog.json` is intentional project configuration, not cache:
 
@@ -220,42 +144,92 @@ It creates `ai-log/<project>/`, `ai-memory/<project>/decisions.md`, `ai-memory/<
 }
 ```
 
-`publish_worklog.py`, `bootstrap_memory.py`, `append_worklog.py`, `draft_from_git.py`, and `weekly_context.py` read this file when command-line arguments do not override it.
+`log`, `publish`, `bootstrap`, `draft`, and `weekly` read this file when CLI flags do not override it.
 
-## Legacy Migration
-
-Use `scripts/migrate_legacy_logs.py` to copy old global-format records into project directories:
+### `log` — append a personal changelog entry
 
 ```bash
-python scripts/migrate_legacy_logs.py --repo /path/to/ai-worklog --default-project "project-slug"
+ai-worklog log --repo . --title "Task title" --goal "One-sentence goal" --changed "Concrete result" --privacy project
 ```
 
-The migration is additive and idempotent: it copies sections into `ai-log/<project>/` and `ai-memory/<project>/` without deleting old files.
+Creates `ai-log/<project>/YYYY-MM.md` when missing, marks the commit as `pending` while the repo is dirty, and fills `files` from the working tree or the last commit.
 
-## Weekly Summary Context
-
-Use `scripts/weekly_context.py` before asking Codex to write a weekly review:
+### `publish` — push a sanitized entry to the remote worklog
 
 ```bash
-python scripts/weekly_context.py --repo . --since 2026-04-24
+ai-worklog publish --remote "https://github.com/<user>/ai-worklog.git" --project "project-slug" --title "Task title" --goal "One-sentence goal" --changed "Concrete result"
 ```
 
-Codex should turn the output into a short private review or a sanitized public note depending on the requested audience.
+No built-in default remote — pass `--remote`, set `AI_WORKLOG_REMOTE`, or rely on `.ai-worklog.json`. The command:
 
-## Summary Rollups
+1. Sparse-clones the remote into a temp directory (only `.gitignore`, `README.md`, `ai-log/<project>/`, `ai-memory/<project>/`, `ai-summary/<project>/`, `ai-index/<project>.json`).
+2. Writes the sanitized entry, updates `ai-index/<project>.json`, refreshes weekly/monthly rollups under `ai-summary/<project>/` (skip with `--no-summary`).
+3. Runs `validate` and `scan`. Refuses to push on failure.
+4. Pushes and removes the temp clone.
 
-Use `scripts/summarize_worklog.py` to write compact machine-readable summaries:
+`scan` blocks obvious API keys, GitHub tokens, private key blocks, `token=...`-style assignments, `.env` references, and raw transcript markers. Do not bypass with `--skip-scan` unless the user explicitly accepts the risk after reviewing the exact findings.
+
+### `bootstrap` — load compact project memory at session start
 
 ```bash
-python scripts/summarize_worklog.py --repo . --project "project-slug" --period weekly --write
-python scripts/summarize_worklog.py --repo . --project "project-slug" --period monthly --write
+ai-worklog bootstrap --repo .
+ai-worklog bootstrap --project "project-slug"   # if repo dir != project slug
 ```
 
-Summary files live at:
+Uses `git clone --depth 1 --filter=blob:none --no-checkout` + sparse checkout so it fetches only `ai-log/<project>/`, `ai-memory/<project>/`, `ai-summary/<project>/`, and `ai-index/<project>.json`. Reads the index first, then summaries, then detailed entries. Use `--max-log-entries`, `--max-memory-sections`, and `--max-chars` to control token budget. Use `--include-legacy` only when old global-format records are needed.
+
+### `draft` — entry draft from git
+
+```bash
+ai-worklog draft --repo . --title "Task title" --goal "One-sentence goal"
+```
+
+The agent should rewrite `Changed`, `Decision`, and `Pitfall` from the git context and user-provided history before passing the result to `publish`.
+
+### `validate` — structure check
+
+```bash
+ai-worklog validate --repo .
+```
+
+Checks `ai-log/<project>/YYYY-MM.md` entries for required frontmatter (`id`, `date`, `project`, `tags`, `privacy`, `commit`, `files`), required body sections (`Goal:`, `Changed:`, `Artifacts:`), project/date path consistency, memory retrieval fields, and `ai-index/<project>.json` shape. Run before committing local records; `publish` runs it automatically.
+
+### `scan` — secret scan
+
+```bash
+ai-worklog scan --repo .
+```
+
+If it reports findings, remove or rewrite the flagged material before committing or publishing.
+
+### `weekly` — context for weekly reviews
+
+```bash
+ai-worklog weekly --repo . --since 2026-04-24
+```
+
+The agent should turn the output into a short private review or a sanitized public note depending on the requested audience.
+
+### `summarize` — weekly/monthly rollups
+
+```bash
+ai-worklog summarize --repo . --project "project-slug" --period weekly --write
+ai-worklog summarize --repo . --project "project-slug" --period monthly --write
+```
+
+Output lives at:
 
 ```text
 ai-summary/<project>/weekly/YYYY-Www.md
 ai-summary/<project>/monthly/YYYY-MM.md
 ```
 
-These are not polished public essays. They are compact retrieval aids for future agents: completed work, notable changes, decisions, pitfalls, and touched files.
+These are not polished essays. They are compact retrieval aids for future agents: completed work, notable changes, decisions, pitfalls, and touched files.
+
+### `migrate` — adopt project layout from old global logs
+
+```bash
+ai-worklog migrate --repo /path/to/ai-worklog --default-project "project-slug"
+```
+
+Additive and idempotent: copies sections into `ai-log/<project>/` and `ai-memory/<project>/` without deleting old files.
